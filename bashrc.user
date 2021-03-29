@@ -44,7 +44,7 @@ build() {
     if [ -f $SXE_MAKE ]; then
         BUILD_PATH="$HOME/build/build-sxe$1_$(date +'%Y%m%d_%H%M%S')"
     	if mkdir -p $BUILD_PATH && cd $BUILD_PATH; then
-    	    if $SXE_PATH/$SXE_MAKE $@ -x64 -m ALL && make 2> >(tee error.log >&2); then
+    	    if $SXE_PATH/$SXE_MAKE $@ -x64 -m ALL -- SXM_EXCLUDE_FROM_ALL=ON && make sdk_cli 2> >(tee error.log >&2); then
     	    	echo "======================================="
                 echo "Errors: $(grep 'error:' $BUILD_PATH/error.log | wc -l), Warnings: $(grep 'warning:' $BUILD_PATH/error.log | wc -l)" && \
     	    	echo "---------------------------------------"
