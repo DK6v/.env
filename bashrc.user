@@ -1,7 +1,7 @@
 # Source common env
 # =================================================================
 
-ENV_PATH=~/.env
+ENV_PATH=${HOME}/.env
 source ${ENV_PATH}/bashrc.common
 
 # Own environment
@@ -15,50 +15,9 @@ PS1='\t \[\e[1;32m\]\u@\h\[\e[m\] \[\e[1;34m\]\w\[\e[m\] \[\e[1;32m\]\$\[\e[m\] 
 
 # Goto
 # -----------------------------------------------------------------
-add_alias ext1                "cd /vobs/extlogger_bugfix/SXe"
-add_alias ext2                "cd /vobs/extlogger_bugfix_2/SXe"
-add_alias ext3                "cd /vobs/extlogger_bugfix_3/SXe"
-add_alias ext4                "cd /vobs/extlogger_bugfix_4/SXe"
 
 # Tools
 # -----------------------------------------------------------------
-tunnel() { 
-	if curl -i -X GET http://localhost:8090 > /dev/null 2>&1; then \
-    	echo "Port 8090 is already opened."
-	else
-        ssh -f sxm@saver -L 8090:localhost:8090 -N && echo "Port 8090 was forwarded."
-	fi
-    if curl -i -X GET http://localhost:8086 > /dev/null 2>&1; then \
-    	echo "Port 8086 is already opened."
-	else
-        ssh -f sxm@saver -L 8086:localhost:8086 -N && echo "Port 8086 was forwarded."
-	fi
-	echo "Done"
-}
-
-# Build
-# -----------------------------------------------------------------
-build() {
-    SXE_PATH=$PWD
-    SXE_MAKE="sdk/platform/cmake/scripts/cmake_linux.sh"
-    if [ -f $SXE_MAKE ]; then
-        BUILD_PATH="$HOME/build/build-sxe$1_$(date +'%Y%m%d_%H%M%S')"
-    	if mkdir -p $BUILD_PATH && cd $BUILD_PATH; then
-    	    if $SXE_PATH/$SXE_MAKE $@ -x64 -m ALL -- SXM_EXCLUDE_FROM_ALL=ON && make sdk_cli 2> >(tee error.log >&2); then
-    	    	echo "======================================="
-                echo "Errors: $(grep 'error:' $BUILD_PATH/error.log | wc -l), Warnings: $(grep 'warning:' $BUILD_PATH/error.log | wc -l)" && \
-    	    	echo "---------------------------------------"
-                echo "md5sum: $(md5sum $(find $BUILD_PATH/cli -name sdk_cli-*) | cut -d' ' -f1)"
-	        echo "Path:   $BUILD_PATH"
-		echo "Binary: $(find $BUILD_PATH/cli -name sdk_cli-*)"
-		echo ""
-	    fi
-	    cd $SXE_PATH
-    	fi
-    else
-    	echo "Build script './$SXE_MAKE' is not found."
-    fi
-}
 
 
 echo "Source file ./.env/bashrc.user          [OK]"
