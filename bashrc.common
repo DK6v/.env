@@ -12,47 +12,47 @@ PS1='\t \[\e[1;32m\]\u@\h\[\e[m\] \[\e[1;34m\]\w\[\e[m\] \[\e[1;32m\]\$\[\e[m\] 
 # Aliases
 # =================================================================
 
-add_alias() {
+add-alias() {
 	alias $1="$2"
 }
 
 # Environment
 # -----------------------------------------------------------------
-add_alias s                   'source ~/.bashrc'
-add_alias ts                  'date +%Y-%m-%d_%Hh%Mm%Ss'
+add-alias s                   'source ~/.bashrc'
+add-alias ts                  'date +%Y-%m-%d_%Hh%Mm%Ss'
 
 # Shell
 # -----------------------------------------------------------------
-add_alias ..                  "cd .."
-add_alias ...                 "cd ../.."
-add_alias hgrep               "history | grep"
+add-alias ..                  "cd .."
+add-alias ...                 "cd ../.."
+add-alias hgrep               "history | grep"
 
 # Git
 # -----------------------------------------------------------------
-add_alias got                 'git '
-add_alias get                 'git '
-add_alias gt                  'git '
-add_alias gs                  'git status'
-add_alias ga                  'git add'
-add_alias gb                  'git branch' 
-add_alias gc                  'git commit'
-add_alias go                  'git checkout'
-add_alias gk                  'gitk --all&'
-add_alias gits                'git status -uno'
-add_alias gd                  'gitdifftool'
-add_alias gtunst              'git reset HEAD'
-add_alias gtunco              'git checkout --'
-add_alias gitcompare          'git difftool -d HEAD~1 HEAD'
+add-alias got                 'git '
+add-alias get                 'git '
+add-alias gt                  'git '
+add-alias gs                  'git status'
+add-alias ga                  'git add'
+add-alias gb                  'git branch' 
+add-alias gc                  'git commit'
+add-alias go                  'git checkout'
+add-alias gk                  'gitk --all&'
+add-alias gits                'git status -uno'
+add-alias gd                  'gitdifftool'
+add-alias gtunst              'git reset HEAD'
+add-alias gtunco              'git checkout --'
+add-alias gitcompare          'git difftool -d HEAD~1 HEAD'
 
-add_alias gtls                '${ENV_PATH}/gtls.sh --tracked'
-add_alias gtlstr              '${ENV_PATH}/gtls.sh --tracked'
-add_alias gtlsuntr            '${ENV_PATH}/gtls.sh --untracked'
-add_alias gtlsst              '${ENV_PATH}/gtls.sh --staged'
-add_alias gtlsunst            '${ENV_PATH}/gtls.sh --unstaged'
+add-alias gtls                '${ENV_PATH}/gtls.sh --tracked'
+add-alias gtlstr              '${ENV_PATH}/gtls.sh --tracked'
+add-alias gtlsuntr            '${ENV_PATH}/gtls.sh --untracked'
+add-alias gtlsst              '${ENV_PATH}/gtls.sh --staged'
+add-alias gtlsunst            '${ENV_PATH}/gtls.sh --unstaged'
 
-add_alias gitalladd           'git add $(gtlsunst)'
-add_alias gitallclean         'git clean -fd `git rev-parse --show-toplevel`'
-add_alias gitclean            'gitallclean -e '*.ctags_tag' -e '*.ctags_db' -e '*.c' -e '*.h' -e '*.sig''
-add_alias gitignored          'git status --ignored -u'
+add-alias gitalladd           'git add $(gtlsunst)'
+add-alias gitallclean         'git clean -fd `git rev-parse --show-toplevel`'
+add-alias gitclean            'gitallclean -e '*.ctags_tag' -e '*.ctags_db' -e '*.c' -e '*.h' -e '*.sig''
+add-alias gitignored          'git status --ignored -u'
 
 echo "Source file ./.env/bashrc.common        [OK]"
