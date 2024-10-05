@@ -1,3 +1,5 @@
+#! /usr/bin/env bash
+
 # Source common env
 # =================================================================
 
@@ -8,12 +10,9 @@ source ${ENV_PATH}/bashrc.common
 # =================================================================
 
 MYMAIL=''
-PS1='\t \[\e[1;32m\]\u@\h\[\e[m\] \[\e[1;34m\]\w\[\e[m\] \[\e[1;32m\]\$\[\e[m\] \[\033[0m\]'
+PS1="\t ${SF_GREEN}${SF_BOLD}\u@\h ${SF_BLUE}\w ${SF_GREEN}\$\[\e[m\] \[\033[0m\] ${SF_NORM}"
 
-# Own aliases
-# =================================================================
-
-# Goto
+# GoTo
 # -----------------------------------------------------------------
 
 # Tools
@@ -21,10 +20,10 @@ PS1='\t \[\e[1;32m\]\u@\h\[\e[m\] \[\e[1;34m\]\w\[\e[m\] \[\e[1;32m\]\$\[\e[m\] 
 
 # Networking
 # -----------------------------------------------------------------
+
 add-alias ip-links      'ip link list'
 add-alias ip-routes     'ip route list'
-
 add-alias ipt-rules     'sudo iptables --list-rules'
 
 
-echo "Source file ./.env/bashrc.user          [OK]"
+echo "Source file ./.env/bashrc.user          [${GREEN}OK${NORM}]"
