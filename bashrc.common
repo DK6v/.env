@@ -28,7 +28,7 @@ if [ -t 1 ] && command -v tput > /dev/null; then
 fi
 
 EDITOR=/usr/bin/vim
-PS1="\t ${SF_GREEN}${SF_BOLD}\u@\h ${SF_BLUE}\w ${SF_GREEN}\$\[\e[m\] \[\033[0m\] ${SF_NORM}"
+PS1="\t ${SF_GREEN}${SF_BOLD}\u@\h ${SF_BLUE}\w ${SF_GREEN}\$ ${SF_NORM}"
 
 # Mask 002 (not 000) is required to make RSA (ssh-keygen) work
 umask 002
@@ -67,14 +67,21 @@ add-alias gd                  'gitdifftool'
 add-alias gtunst              'git reset HEAD'
 add-alias gtunco              'git checkout --'
 add-alias gitcompare          'git difftool -d HEAD~1 HEAD'
-add-alias gtls                '${ENV_PATH}/gtls.sh --tracked'
-add-alias gtlstr              '${ENV_PATH}/gtls.sh --tracked'
-add-alias gtlsuntr            '${ENV_PATH}/gtls.sh --untracked'
-add-alias gtlsst              '${ENV_PATH}/gtls.sh --staged'
-add-alias gtlsunst            '${ENV_PATH}/gtls.sh --unstaged'
+add-alias gtls                'gtls.sh --tracked'
+add-alias gtlstr              'gtls.sh --tracked'
+add-alias gtlsuntr            'gtls.sh --untracked'
+add-alias gtlsst              'gtls.sh --staged'
+add-alias gtlsunst            'gtls.sh --unstaged'
 add-alias gitalladd           'git add $(gtlsunst)'
 add-alias gitallclean         'git clean -fd `git rev-parse --show-toplevel`'
 add-alias gitclean            'gitallclean -e '*.ctags_tag' -e '*.ctags_db' -e '*.c' -e '*.h' -e '*.sig''
 add-alias gitignored          'git status --ignored -u'
+
+# Networking
+# -----------------------------------------------------------------
+
+add-alias ip-links      'ip link list'
+add-alias ip-routes     'ip route list'
+add-alias ipt-rules     'sudo iptables --list-rules'
 
 echo "Source file ./.env/bashrc.common        [${GREEN}OK${NORM}]"

@@ -1,0 +1,16 @@
+#! /usr/bin/env bash
+
+# Source common env
+# =================================================================
+
+ENV_PATH=${HOME}/.env
+
+source ${ENV_PATH}/bashrc.common
+
+# Own environment
+# =================================================================
+
+MYMAIL=''
+PS1="\t ${SF_GREEN}${SF_BOLD}\u@\h ${SF_BLUE}\w ${SF_GREEN}\$ ${SF_NORM}"
+
+echo "Source file ./.env/bashrc.user          [${GREEN}OK${NORM}]"
