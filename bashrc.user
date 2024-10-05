@@ -19,5 +19,12 @@ PS1='\t \[\e[1;32m\]\u@\h\[\e[m\] \[\e[1;34m\]\w\[\e[m\] \[\e[1;32m\]\$\[\e[m\] 
 # Tools
 # -----------------------------------------------------------------
 
+# Networking
+# -----------------------------------------------------------------
+add-alias ip-links      'ip link list'
+add-alias ip-routes     'ip route list'
+
+add-alias ipt-rules     'sudo iptables --list-rules'
+
 
 echo "Source file ./.env/bashrc.user          [OK]"
