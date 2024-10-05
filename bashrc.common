@@ -1,13 +1,37 @@
+#! /usr/bin/env bash
+
 # Common settings
 # =================================================================
 
 PATH=${ENV_PATH}:$PATH
 
-# 002 (not 000) is required to make RSA (ssh-keygen) work
-umask 002
+# Terminal colors (plain, tty)
+if [ -t 1 ] && command -v tput > /dev/null; then
+   SF_BOLD="$(tput bold)"
+   SF_NORM="$(tput sgr0)"
+   SF_BLACK="$(tput setaf 0)"
+   SF_RED="$(tput setaf 1)"
+   SF_GREEN="$(tput setaf 2)"
+   SF_YELLOW="$(tput setaf 3)"
+   SF_BLUE="$(tput setaf 4)"
+   SF_MAGENTA="$(tput setaf 5)"
+   SF_CYAN="$(tput setaf 6)"
+   SF_LGREY="$(tput setaf 7)"
+   SF_DGREY=="$(tput setaf 8)"
+   SF_LRED="$(tput setaf 9)"
+   SF_LGREEN="$(tput setaf 10 )"
+   SF_LYELLOW="$(tput setaf 11)"
+   SF_LBLUE="$(tput setaf 12)"
+   SF_LMAGENTA="$(tput setaf 13)"
+   SF_LCYAN="$(tput setaf 14)"
+   SF_WHITE="$(tput setaf 15)"
+fi
 
 EDITOR=/usr/bin/vim
-PS1='\t \[\e[1;32m\]\u@\h\[\e[m\] \[\e[1;34m\]\w\[\e[m\] \[\e[1;32m\]\$\[\e[m\] \[\033[0m\]'
+PS1="\t ${SF_GREEN}${SF_BOLD}\u@\h ${SF_BLUE}\w ${SF_GREEN}\$\[\e[m\] \[\033[0m\] ${SF_NORM}"
+
+# Mask 002 (not 000) is required to make RSA (ssh-keygen) work
+umask 002
 
 # Aliases
 # =================================================================
@@ -27,7 +51,7 @@ add-alias ..                  "cd .."
 add-alias ...                 "cd ../.."
 add-alias hgrep               "history | grep"
 
-# Git
+# Git Tool
 # -----------------------------------------------------------------
 add-alias got                 'git '
 add-alias get                 'git '
@@ -43,16 +67,14 @@ add-alias gd                  'gitdifftool'
 add-alias gtunst              'git reset HEAD'
 add-alias gtunco              'git checkout --'
 add-alias gitcompare          'git difftool -d HEAD~1 HEAD'
-
 add-alias gtls                '${ENV_PATH}/gtls.sh --tracked'
 add-alias gtlstr              '${ENV_PATH}/gtls.sh --tracked'
 add-alias gtlsuntr            '${ENV_PATH}/gtls.sh --untracked'
 add-alias gtlsst              '${ENV_PATH}/gtls.sh --staged'
 add-alias gtlsunst            '${ENV_PATH}/gtls.sh --unstaged'
-
 add-alias gitalladd           'git add $(gtlsunst)'
 add-alias gitallclean         'git clean -fd `git rev-parse --show-toplevel`'
 add-alias gitclean            'gitallclean -e '*.ctags_tag' -e '*.ctags_db' -e '*.c' -e '*.h' -e '*.sig''
 add-alias gitignored          'git status --ignored -u'
 
-echo "Source file ./.env/bashrc.common        [OK]"
+echo "Source file ./.env/bashrc.common        [${GREEN}OK${NORM}]"
