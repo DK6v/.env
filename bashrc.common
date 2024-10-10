@@ -6,29 +6,35 @@
 PATH=${ENV_PATH}:$PATH
 
 # Terminal colors (plain, tty)
-if [ -t 1 ] && command -v tput > /dev/null; then
-   SF_BOLD="$(tput bold)"
-   SF_NORM="$(tput sgr0)"
-   SF_BLACK="$(tput setaf 0)"
-   SF_RED="$(tput setaf 1)"
-   SF_GREEN="$(tput setaf 2)"
-   SF_YELLOW="$(tput setaf 3)"
-   SF_BLUE="$(tput setaf 4)"
-   SF_MAGENTA="$(tput setaf 5)"
-   SF_CYAN="$(tput setaf 6)"
-   SF_LGREY="$(tput setaf 7)"
-   SF_DGREY=="$(tput setaf 8)"
-   SF_LRED="$(tput setaf 9)"
-   SF_LGREEN="$(tput setaf 10 )"
-   SF_LYELLOW="$(tput setaf 11)"
-   SF_LBLUE="$(tput setaf 12)"
-   SF_LMAGENTA="$(tput setaf 13)"
-   SF_LCYAN="$(tput setaf 14)"
-   SF_WHITE="$(tput setaf 15)"
+# https://stackoverflow.com/questions/4842424/list-of-ansi-color-escape-sequences
+if [ -t 1 ]; then
+   # Style
+   SF_NORM="\[\e[0m\]"
+   SF_BOLD="\[\e[1m\]"
+   SF_FAINT="\[\e[2m\]"
+   SF_ITALIC="\[\e[3m\]"
+   SF_UNDERLINE="\[\e[4m\]"
+   # 8-bit colors
+   SF_BLACK="\[\e[38;5;0m\]"
+   SF_RED="\[\e[38;5;1m\]"
+   SF_GREEN="\[\e[38;5;2m\]"
+   SF_YELLOW="\[\e[38;5;3m\]"
+   SF_BLUE="\[\e[38;5;4m\]"
+   SF_MAGENTA="\[\e[38;5;5m\]"
+   SF_CYAN="\[\e[38;5;6m\]"
+   SF_LGREY="\[\e[38;5;7m\]"
+   SF_DGREY=="\[\e[38;5;8m\]"
+   SF_LRED="\[\e[38;5;9m\]"
+   SF_LGREEN="\[\e[38;5;10m\]"
+   SF_LYELLOW="\[\e[38;5;11m\]"
+   SF_LBLUE="\[\e[38;5;12m\]"
+   SF_LMAGENTA="\[\e[38;5;13m\]"
+   SF_LCYAN="\[\e[38;5;14m\]"
+   SF_WHITE="\[\e[38;5;15m\]"
 fi
 
 EDITOR=/usr/bin/vim
-PS1="\t ${SF_GREEN}${SF_BOLD}\u@\h ${SF_BLUE}\w ${SF_GREEN}\$ ${SF_NORM}"
+PS1="\t ${SF_BOLD}${SF_GREEN}\u@\h ${SF_BLUE}\w ${SF_GREEN}\$ ${SF_NORM}"
 
 # Mask 002 (not 000) is required to make RSA (ssh-keygen) work
 umask 002
