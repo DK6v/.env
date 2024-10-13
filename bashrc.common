@@ -91,6 +91,9 @@ add-alias ip-routes     'ip route list'
 add-alias ip-details    '_wrap(){ ip -details -json link show $@ | jq; }; _wrap'
 
 add-alias ipt-rules     'sudo iptables --list-rules'
-add-alias ipt-nat       'sudo iptables --table nat --list --numeric'
+add-alias ipt-nat       'sudo iptables --list --numeric --verbose --table nat'
+add-alias ipt-stats     'sudo iptables --list --numeric --verbose'
+
+add-alias scan-ports    'nmap -sS -sU -T4'
 
 echo "Source file ./.env/bashrc.common        [${GREEN}OK${NORM}]"
