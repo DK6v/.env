@@ -1,13 +1,12 @@
 #! /usr/bin/env bash
-# shellcheck source=/dev/null
 
 # Source common env
 # =================================================================
 
 ENV_PATH=${HOME}/.env
 
+# shellcheck source=/dev/null
 source "${ENV_PATH}/bashrc.common"
-source "${ENV_PATH}/bashrc.script"
 
 # Own environment
 # =================================================================
