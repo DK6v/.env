@@ -1,16 +1,18 @@
 #! /usr/bin/env bash
+# shellcheck source=/dev/null
 
 # Source common env
 # =================================================================
 
 ENV_PATH=${HOME}/.env
 
-source ${ENV_PATH}/bashrc.common
+source "${ENV_PATH}/bashrc.common"
+source "${ENV_PATH}/bashrc.script"
 
 # Own environment
 # =================================================================
 
-MYMAIL=''
+export MYMAIL=''
 PS1="\t ${SF_GREEN}${SF_BOLD}\u@\h ${SF_BLUE}\w ${SF_GREEN}\$ ${SF_NORM}"
 
-echo "Source file ./.env/bashrc.user          [${GREEN}OK${NORM}]"
+log-result "Source file ./.env/bashrc.user"

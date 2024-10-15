@@ -1,0 +1,67 @@
+#!/usr/bin/env bash
+
+readonly nping="/usr/bin/nping"
+
+# Apply color scheme, see ~/.env/bashrc.common for details.
+global_color_scheme;
+
+function main() {
+
+  local DIRECT_OPTS=()
+
+  local IP_ADDR=""
+  local MAC_ADDR=""
+
+  if ! type "$nping" >/dev/null 2>&1; then
+    log-warning "Command 'nping' needs to be installed, terminating..."
+    exit "$ENOPKG"
+  fi
+
+  while (($#)); do
+    local opt=$1
+    case $opt in
+      -s|--source)
+          if [ $# -lt 1 ]; then
+            log-error "IP address is not specified"
+            exit "$ENOARG"
+          fi
+          IP_ADDR=$2
+          shift 2
+          ;;
+      -h|--help)
+          exec nping --help
+          exit "$ENOERR"
+          ;;
+      *)
+          DIRECT_OPTS+=("$opt")
+          shift
+          ;;
+      esac
+  done
+
+  if [ -n "$IP_ADDR" ] &&
+     [[ ! "$IP_ADDR" =~ (^([0-9]{1,3}\.){3}[0-9]{1,3}$) ]]; then
+    log-error "Invalid IPv4 address"
+    exit "$EINVAL"
+  fi
+
+  # Find the source MAC address
+  MAC_ADDR=$(ip-to-mac "$IP_ADDR" 2>/dev/null) 
+
+  log-debug "Source address: IP=$IP_ADDR MAC=$MAC_ADDR"
+  log-debug "Direct options: ${DIRECT_OPTS[*]}"
+
+  # Prepare wrapped command
+  if [ -n "$IP_ADDR" ] && [ -n "$MAC_ADDR" ]; then
+    cmd="sudo nping --source-ip $IP_ADDR --source-mac $MAC_ADDR ${DIRECT_OPTS[*]}"
+  else
+    log-warn "The source MAC address was not found. Default values will be used instead."
+    cmd="sudo nping ${DIRECT_OPTS[*]}"
+  fi
+
+  log-info "Wrapped command: \"$cmd\""
+  exec $cmd
+}
+
+main "$@"
+exit $?
