@@ -1,0 +1,88 @@
+#! /usr/bin/env bash
+
+# Apply color scheme, see ~/.env/bashrc.common for details.
+global_color_scheme
+
+# Include result codes
+global_result_codes
+
+function main() {
+
+  if ! command -v 'gawk' > /dev/null; then
+    if command -v 'apt' > /dev/null; then
+      printf '%b\n' \
+        "${SF_YELLOW}${SF_BOLD}Warning${SF_NORM}: Command 'gawk' not found, but can be installed with:" \
+         "sudo apt install gawk" 1>&2; # error
+    else
+      echo -e "${SF_YELLOW}${SF_BOLD}Warning${SF_NORM}:" \
+        "Command 'gawk' not found, terminating..." 1>&2; # error
+    fi
+    exit "$ENOPKG"
+  fi
+
+  if [ $# -ne 1 ]; then
+    echo -e "${SF_RED}${SF_BOLD}Error${SF_NORM}: IP address is not specified" 1>&2; #error
+    exit "$ENOARG"
+  fi
+
+  IP_ADDRESS="$1"
+  if [[ ! "${IP_ADDRESS}" =~ ([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}) ]]; then
+    echo -e "${SF_RED}${SF_BOLD}Error${SF_NORM}: Invalid IPv4 address" 1>&2; #error
+    exit "$EINVAL"
+  fi
+
+  if ! ping -c 1 "$IP_ADDRESS"  >/dev/null 2>&1; then
+    echo -e "${SF_RED}${SF_BOLD}Error${SF_NORM}: Destinaiton unreachable (${IP_ADDRESS})" 1>&2; #error
+    exit "$EUNRCH"
+  fi
+
+  MAC_ADDRESS=$( \
+    ip address | \
+      gawk --assign address="$IP_ADDRESS" \
+      ' \
+        BEGIN { mac=""; ip=""; retval="" }
+        /link\S+/ { \
+          match($0, /link\S+ (([0-9a-f]{2}:?){5}[0-9a-f]{2})/, groups); \
+          mac=groups[1]; \
+        } \
+        /inet\s+/ { \
+          match($0, /inet ([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})/, groups); \
+          if (address == groups[1]) { retval=mac; exit; }; \
+        } \
+        END { \
+          if (retval) { print retval; } \
+          else        { exit 1; }
+        } \
+      ' \
+  )
+
+  if [ -n "$MAC_ADDRESS" ]; then
+      echo "$MAC_ADDRESS"
+      exit "$ENOERR"
+  fi
+
+  MAC_ADDRESS=$( \
+    arp -n | \
+      gawk --assign address="$IP_ADDRESS" \
+      ' \
+          BEGIN { retval="" }
+          /([0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3}\.[0-9]{1,3})\s+/ { \
+            if ($1 == address) { retval=$3; exit; }
+          } \
+          END { \
+            if (retval) { print retval; } \
+            else        { exit 1; }
+          }
+      ' \
+  )
+
+  if [ "$MAC_ADDRESS" ]; then
+      echo "$MAC_ADDRESS"
+      exit "$ENOERR"
+  fi
+
+  return "$ENOENT"
+}
+
+main "$@"
+exit "$?"

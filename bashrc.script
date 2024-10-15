@@ -1,0 +1,88 @@
+#!/usr/bin/env bash
+
+# REF: Utility Argument Syntax
+# https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap12.html
+
+# Terminal colors (plain, tty)
+# Arguments: none
+# Description:
+#   https://stackoverflow.com/questions/4842424/list-of-ansi-color-escape-sequences
+# shellcheck disable=SC2034
+function global_color_scheme() {
+   if [ -t 1 ]; then
+      # Style
+      SF_NORM="\e[0m"
+      SF_BOLD="\e[1m"
+      SF_FAINT="\e[2m"
+      SF_ITALIC="\e[3m"
+      SF_UNDERLINE="\e[4m"
+      # 8-bit colors
+      SF_BLACK="\e[38;5;0m"
+      SF_RED="\e[38;5;1m"
+      SF_GREEN="\e[38;5;2m"
+      SF_YELLOW="\e[38;5;3m"
+      SF_BLUE="\e[38;5;4m"
+      SF_MAGENTA="\e[38;5;5m"
+      SF_CYAN="\e[38;5;6m"
+      SF_LGREY="\e[38;5;7m"
+      SF_DGREY="\e[38;5;8m"
+      SF_LRED="\e[38;5;9m"
+      SF_LGREEN="\e[38;5;10m"
+      SF_LYELLOW="\e[38;5;11m"
+      SF_LBLUE="\e[38;5;12m"
+      SF_LMAGENTA="\e[38;5;13m"
+      SF_LCYAN="\e[38;5;14m"
+      SF_WHITE="\e[38;5;15m"
+   fi
+}
+export -f global_color_scheme
+
+# The names and meanings of result codes
+# shellcheck disable=SC2034
+function global_result_codes() {
+   # https://man.freebsd.org/cgi/man.cgi?errno
+   ENOERR=0    # Success
+   ENOENT=2    # IP address not found
+   ERBUSY=16   # Device or resource busy
+   EINVAL=22   # Invlid argument
+   # User defined
+   ENOARG=128  # No arguments
+   ENOPKG=129  # Package not found
+   EUNRCH=130  # Host unreachable
+}
+export -f global_result_codes
+
+# Logging level (high -> low):
+#   error -> warning -> info -> debug
+export LOG_LEVEL="info"
+
+# Print a descriptive message
+# Arguments: <message>
+# Rerurn: formatted string
+function log-debug()  { [[ "$LOG_LEVEL" =~ ^(debug)$ ]] &&
+                        printf -- "${SF_BOLD}Debug${SF_NORM}: [%s] %s\n" \
+                                  "${FUNCNAME[1]}:${BASH_LINENO[0]}" "$*"; }
+function log-info()   { [[ "$LOG_LEVEL" =~ ^(info|debug)$ ]] &&
+                        echo -e "${SF_BOLD}${SF_LBLUE}Info${SF_NORM}: $*"; }
+function log-warn()   { [[ "$LOG_LEVEL" =~ ^(warn.*|info|debug)$ ]] &&
+                        echo -e "${SF_BOLD}${SF_YELLOW}Warning${SF_NORM}: $*" >&2; } # error
+function log-error()  { echo -e "${SF_BOLD}${SF_RED}Error${SF_NORM}: $*" >&2; } # error
+
+export -f log-debug
+export -f log-info
+export -f log-warn
+export -f log-error
+
+# Print a result message
+# Arguments:
+#   <message> - descriptive message
+#   [<result>] - result code: 0 - success, any other value indicates failure.
+function log-result() { [ ${2:-0} ] \
+                          && echo -e "[${SF_GREEN}OK${SF_NORM}]   $*" \
+                          || echo -e "[${SF_RED}FAIL${SF_NORM}] $*"; }
+export -f log-result
+
+# Apply color scheme
+global_color_scheme;
+
+log-result "Source file ./.env/bashrc.script"
