@@ -42,12 +42,12 @@ export -f global_color_scheme
 function global_result_codes() {
    # https://man.freebsd.org/cgi/man.cgi?errno
    ENOERR=0    # Success
-   ENOENT=2    # IP address not found
+   ENOENT=2    # No entry found
    ERBUSY=16   # Device or resource busy
    EINVAL=22   # Invlid argument
    # User defined
    ENOARG=128  # No arguments
-   ENOPKG=129  # Package not found
+   ENOPKG=129  # Required package not found
    EUNRCH=130  # Host unreachable
 }
 export -f global_result_codes
