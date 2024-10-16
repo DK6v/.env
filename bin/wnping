@@ -2,6 +2,8 @@
 
 readonly nping="/usr/bin/nping"
 
+# LOG_LEVEL='debug'
+
 # Apply color scheme, see ~/.env/bashrc.common for details.
 global_color_scheme;
 
@@ -46,7 +48,7 @@ function main() {
   fi
 
   # Find the source MAC address
-  MAC_ADDR=$(ip-to-mac "$IP_ADDR" 2>/dev/null) 
+  MAC_ADDR=$(ip-to-mac "$IP_ADDR") 
 
   log-debug "Source address: IP=$IP_ADDR MAC=$MAC_ADDR"
   log-debug "Direct options: ${DIRECT_OPTS[*]}"

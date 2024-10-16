@@ -31,7 +31,7 @@ function main() {
     exit "$EINVAL"
   fi
 
-  if ! ping -c 1 "$IP_ADDRESS"  >/dev/null 2>&1; then
+  if ! ping -w 1000 -c 1 "$IP_ADDRESS"  >/dev/null 2>&1; then
     echo -e "${SF_RED}${SF_BOLD}Error${SF_NORM}: Destinaiton unreachable (${IP_ADDRESS})" 1>&2; #error
     exit "$EUNRCH"
   fi
