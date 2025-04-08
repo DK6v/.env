@@ -88,5 +88,6 @@ add-alias scan-ports    'nmap -sS -sU -T4'
 add-alias arp-flush     'sudo ip -s -s neigh flush all'
 
 add-alias dns-status    'resolvectl status'
+add-alias dns-flush     'sudo resolvectl flush-caches'
 
 log-result "Source file ./.env/bashrc.common"
