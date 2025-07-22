@@ -23,7 +23,7 @@ fi
 global_color_scheme;
 
 export EDITOR="/usr/bin/vim"
-PS1="\t ${SF_BOLD}${SF_GREEN}\u@\h ${SF_BLUE}\w ${SF_GREEN}\$ ${SF_NORM}"
+PS1="\t \[${SF_BOLD}\]\[${SF_GREEN}\]\u@\h \[${SF_BLUE}\]\w \[${SF_GREEN}\]\$ \[${SF_NORM}\]"
 
 # Mask 002 (not 000) is required to make RSA (ssh-keygen) work
 umask 002
