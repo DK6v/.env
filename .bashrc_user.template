@@ -15,4 +15,4 @@ export MYMAIL=''
 PS1="\t \[${SF_GREEN}\]\[${SF_BOLD}\]\u@\h \[${SF_BLUE}\]\w \[${SF_GREEN}\]\$ \[${SF_NORM}\]"
 
 
-log-result "Source file ./.env/bashrc.user"
+log-result "Source file .bashrc_user"
