@@ -45,6 +45,8 @@ add-alias ts                  'date +%Y-%m-%d_%Hh%Mm%Ss'
 add-alias ..                  "cd .."
 add-alias ...                 "cd ../.."
 add-alias hgrep               "history | grep"
+add-alias ll                  "ls -lh"
+add-alias la                  "ls -alh"
 
 # Git Tool
 # -----------------------------------------------------------------
@@ -53,7 +55,8 @@ add-alias get                 'git '
 add-alias gt                  'git '
 add-alias gs                  'git status'
 add-alias ga                  'git add'
-add-alias gb                  'git branch' 
+add-alias gaa                 'git add $(gtlsunst)'
+add-alias gb                  'git branch'
 add-alias gc                  'git commit'
 add-alias go                  'git checkout'
 add-alias gk                  'gitk --all&'
