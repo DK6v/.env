@@ -1,6 +1,6 @@
 #! /usr/bin/env bash
 
-# Source common env
+# Source common environment
 # =================================================================
 
 ENV_PATH=${HOME}/.env
@@ -8,7 +8,7 @@ ENV_PATH=${HOME}/.env
 # shellcheck source=/dev/null
 source "${ENV_PATH}/bashrc.common"
 
-# Own environment
+# User environment
 # =================================================================
 
 export MYMAIL=''
