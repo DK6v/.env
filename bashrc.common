@@ -8,7 +8,7 @@
 # ---------------------------------------------------------------------
 
 if [ -z "$ENV_FILE" ]; then
-    ENV_PATH=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+    export ENV_PATH=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 fi
 
 if [[ ! "${PATH}" =~ ((^|:)${ENV_PATH}(:|$)) ]]; then

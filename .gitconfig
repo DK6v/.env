@@ -1,0 +1,5 @@
+[user]
+;	name = John Doe
+;	email = john@example.com
+[include]
+	path = ~/.env/gitconfig.common
