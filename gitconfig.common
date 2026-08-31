@@ -1,21 +1,20 @@
-
 [init]
 	defaultBranch = main
-[diff]
-    tool = kdiff3
-[difftool]
-    prompt = false
-    keepBackup = false
-    trustExitCode = false
-[mergetool]
-    prompt = false
-    keepBackup = false
-    keepTemporaries = false
-[merge]
-    tool = kdiff3
-[color]
-	ui = auto
 [core]
 	editor = code --wait
+[color]
+	ui = auto
+[diff]
+	tool = kdiff3
+[difftool]
+	prompt = false
+	keepBackup = false
+	trustExitCode = false
+[merge]
+	tool = kdiff3
+[mergetool]
+	prompt = false
+	keepBackup = false
+	keepTemporaries = false
 [include]
-  path = ~/.env/gitconfig.aliases
+	path = ~/.env/gitconfig.aliases
