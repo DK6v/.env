@@ -93,4 +93,15 @@ add-alias arp-flush     'sudo ip -s -s neigh flush all'
 add-alias dns-status    'resolvectl status'
 add-alias dns-flush     'sudo resolvectl flush-caches'
 
+# Docker
+# -----------------------------------------------------------------
+
+# docker container
+dc() {
+    case "$1" in
+        ls)  shift; docker container ls --format "table {{.ID}}\t{{.Names}}" "$@" ;;
+        *)   docker container "$@" ;;
+    esac
+}
+
 log-result "Source file ./.env/bashrc.common"
