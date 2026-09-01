@@ -38,8 +38,12 @@ PS1="\t \[${SF_BOLD}\]\[${SF_GREEN}\]\u@\h \[${SF_BLUE}\]\w \[${SF_GREEN}\]\$ \[
 # Mask 002 (not 000) is required to make RSA (ssh-keygen) work
 umask 002
 
-if [ -f ${ENV_PATH}/bashrc.user ]; then
+if [ -f ${ENV_PATH}/bashrc.aliases ]; then
     . ${ENV_PATH}/bashrc.aliases
+fi
+
+if [ -f ${ENV_PATH}/bashrc.complete ]; then
+    . ${ENV_PATH}/bashrc.complete
 fi
 
 log-result "Source file ./.env/bashrc.common"

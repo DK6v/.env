@@ -79,7 +79,7 @@ add-alias dns-flush     'sudo resolvectl flush-caches'
 # docker container
 dc() {
     case "$1" in
-        ls)  shift; docker container ls --format "table {{.ID}}\t{{.Names}}" "$@" ;;
+        ls)  shift; docker container ls --format "{{.Names}}" "$@" ;;
         *)   docker container "$@" ;;
     esac
 }
