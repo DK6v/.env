@@ -1,0 +1,35 @@
+#! /usr/bin/env bash
+
+# shellcheck source=/dev/null
+# shellcheck disable=SC2016,SC2139
+
+__auto_complete_dc() {
+    local cur words cword
+    _init_completion || return
+
+    # If first argument is a subcommand
+    if [[ $cword -eq 1 ]]; then
+        # Suggest subcommands
+        local opts="ls exec start stop restart rm logs ps inspect"
+        mapfile -t COMPREPLY < <(compgen -W "$opts" -- "$cur")
+        return 0
+    fi
+
+    # For ls subcommand, suggest docker options
+    if [[ ${words[1]} == "ls" ]]; then
+        local opts="-a --all -f --filter --format -n --last -l --latest --no-trunc -q --quiet -s --size"
+        mapfile -t COMPREPLY < <(compgen -W "$opts" -- "$cur")
+        return 0
+    fi
+
+    # For other subcommands, suggest container names
+    case "${words[1]}" in
+        exec|start|stop|restart|rm|logs|inspect)
+            mapfile -t COMPREPLY < <(docker ps -a --format '{{.Names}}' | grep "^$cur")
+            return 0
+            ;;
+    esac
+}
+complete -F __auto_complete_dc dc
+
+log-result "Source file ./.env/bashrc.complete"
