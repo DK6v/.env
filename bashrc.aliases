@@ -79,7 +79,62 @@ add-alias dns-flush     'sudo resolvectl flush-caches'
 # docker container
 dc() {
     case "$1" in
-        ls)  shift; docker container ls --format "{{.Names}}" "$@" ;;
+        ls) shift
+            docker container ls --format "{{.Names}}" "$@"
+            ;;
+
+        ns) shift
+            local usage="Usage: dc ns <container_name> [options] [--] <command>"
+            if [ -z "$1" ]; then
+                echo "$usage"
+                return 1
+            fi
+            if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
+                echo "$usage"
+                echo ""
+                echo "Enter container namespace and execute command"
+                echo ""
+                echo "Examples:"
+                echo "  dc ns mycontainer ip a                    # Show network interfaces"
+                echo "  dc ns mycontainer --net --pid ps aux      # Show processes in container"
+                echo "  dc ns mycontainer -- --help               # Run --help in container"
+                echo "  dc ns mycontainer                         # Start bash in container"
+                echo ""
+                echo "Common options:"
+                echo "  --net      Enter network namespace"
+                echo "  --pid      Enter PID namespace"
+                echo "  --mount    Enter mount namespace"
+                echo "  --uts      Enter UTS namespace"
+                echo "  --ipc      Enter IPC namespace"
+                return 0
+            fi
+            local container="$1"
+            shift
+            local pid
+            pid=$(docker inspect -f '{{.State.Pid}}' "$container" 2>/dev/null)
+            if [ -z "$pid" ] || [ "$pid" -eq 0 ]; then
+                echo "Container '$container' is not running or doesn't exist"
+                return 1
+            fi
+            # Options starts with --
+            local ns_opts=()
+            local command=()
+            for arg in "$@"; do
+                if [[ ${#command[@]} -eq 0 ]] && [[ "$arg" == --* ]]; then
+                    ns_opts+=("$arg")
+                else
+                    command+=("$arg")
+                fi
+            done
+            if [[ ${#command[@]} -eq 0 ]]; then
+                # shellcheck disable=SC2068
+                sudo nsenter -t "$pid" ${ns_opts[@]} /bin/bash
+            else
+                # shellcheck disable=SC2068
+                sudo nsenter -t "$pid" ${ns_opts[@]} "${command[@]}"
+            fi
+            ;;
+
         *)   docker container "$@" ;;
     esac
 }

@@ -10,15 +10,37 @@ __auto_complete_dc() {
     # If first argument is a subcommand
     if [[ $cword -eq 1 ]]; then
         # Suggest subcommands
-        local opts="ls exec start stop restart rm logs ps inspect"
+        local opts="ls exec start stop restart rm logs ps inspect ns"
         mapfile -t COMPREPLY < <(compgen -W "$opts" -- "$cur")
         return 0
     fi
 
     # For ls subcommand, suggest docker options
     if [[ ${words[1]} == "ls" ]]; then
-        local opts="-a --all -f --filter --format -n --last -l --latest --no-trunc -q --quiet -s --size"
+        local opts="-a --all --filter --format"
         mapfile -t COMPREPLY < <(compgen -W "$opts" -- "$cur")
+        return 0
+    fi
+
+    # For ns subcommand
+    if [[ ${words[1]} == "ns" ]]; then
+        if [[ $cword -eq 2 ]]; then
+            if [[ "$cur" == "-"* ]]; then
+                # If typing just "dc ns -" suggest only --help
+                local opts="--help"
+                mapfile -t COMPREPLY < <(compgen -W "$opts" -- "$cur")
+            else
+                # Suggest running containers
+                mapfile -t COMPREPLY < <(docker ps --format '{{.Names}}' 2>/dev/null | grep "^$cur")
+            fi
+        elif [[ $cword -eq 3 ]]; then
+            # After container name, suggest nsenter options
+            local opts="--net --pid --mount --uts --ipc --"
+            mapfile -t COMPREPLY < <(compgen -W "$opts" -- "$cur")
+        else
+            # For subsequent arguments, suggest files
+            mapfile -t COMPREPLY < <(compgen -f -- "$cur")
+        fi
         return 0
     fi
 
