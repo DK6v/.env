@@ -139,4 +139,63 @@ dc() {
     esac
 }
 
+# ---------------------------------------------------------------------
+# Docker
+# ---------------------------------------------------------------------
+
+# List certificates
+# Usage: cert-info [-n <N>] <file>
+cert-list() {
+    local file="${1:-/etc/ssl/certs/ca-certificates.crt}"
+    echo "  Certificates in: $file"
+    echo "---------------------------------------------------------------------"
+    awk -v cmd="openssl x509 -noout -subject" \
+        '/BEGIN CERTIFICATE/{close(cmd)};{print | cmd}' \
+        < "$file" | nl
+}
+
+# Show certificate
+# Usage: cert-info [-n <N>] <file>
+cert-info() {
+    local num=""
+    local file=""
+    
+    [ "$1" = "-n" ] && { num="$2"; shift 2; }
+    file="${1:-/etc/ssl/certs/ca-certificates.crt}"
+    
+    [ ! -f "$file" ] && echo "File not found" && return 1
+    
+    # If no number - just run openssl on the whole file
+    if [ -z "$num" ]; then
+        openssl x509 -text -noout -in "$file"
+        return 0
+    fi
+    
+    # Show specific certificate by number
+    awk -v n="$num" '
+        BEGIN { c="" }
+        /BEGIN CERT/ {
+            if (c) {
+                count++
+                if (count == n) {
+                    print c
+                    exit
+                }
+                c = ""
+            }
+            c = $0 "\n"
+            next
+        }
+        {
+            c = c $0 "\n"
+        }
+        END {
+            if (c) {
+                count++
+                if (count == n) print c
+            }
+        }
+    ' "$file" | openssl x509 -text -noout
+}
+
 log-result "Source file ./.env/bashrc.aliases"

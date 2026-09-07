@@ -54,4 +54,33 @@ __auto_complete_dc() {
 }
 complete -F __auto_complete_dc dc
 
+__auto_complete_cert() {
+    local cur="${COMP_WORDS[COMP_CWORD]}"
+    local prev="${COMP_WORDS[COMP_CWORD-1]}"
+    local cmd="${COMP_WORDS[0]}"
+    
+    case "$cmd" in
+        cert-list)
+            # Complete with .crt .pem .cer files
+            mapfile -t COMPREPLY < <(compgen -f -X '!*.@(crt|pem|cer)' -- "$cur")
+            ;;
+            
+        cert-info)
+            if [[ "$prev" == "-n" ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "1 2 3 4 5 6 7 8 9" -- "$cur")
+                return 0
+            fi
+
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W '-n' -- "$cur")
+                return 0
+            fi
+                        
+            # Complete with .crt .pem .cer files
+            mapfile -t COMPREPLY < <(compgen -f -X '!*.@(crt|pem|cer)' -- "$cur")
+            ;;
+    esac
+}
+complete -F __auto_complete_cert cert-list cert-info
+
 log-result "Source file ./.env/bashrc.complete"
