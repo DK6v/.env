@@ -134,6 +134,47 @@ dc() {
                 sudo nsenter -t "$pid" ${ns_opts[@]} "${command[@]}"
             fi
             ;;
+        
+        br|bridge)
+            shift
+            local usage="Usage: dc bridge <network_name>"
+            if [ -z "$1" ]; then
+                echo "$usage"
+                return 1
+            fi
+            if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
+                echo "$usage"
+                echo ""
+                echo "Print the bridge interface name for a docker network"
+                echo ""
+                echo "Examples:"
+                echo "  dc br host                 # error: no bridge interface"
+                echo "  dc br bridge               # docker0 (default bridge)"
+                echo "  dc br docker_internal      # br-d331fd2b46f9"
+                return 0
+            fi
+            local net="$1" driver id
+            read -r driver id < <(docker network inspect -f '{{.Driver}} {{.Id}}' "$net" 2>/dev/null) || {
+                log-error "network '$net' not found"
+                return 1
+            }
+            
+            case "$driver" in
+                bridge)
+                    if [ "$net" = bridge ]; then echo docker0
+                    else printf 'br-%.12s\n' "$id"
+                    fi
+                    ;;
+                host|none|null)
+                    log-warn "network '$net' has no bridge interface (driver=$driver)"
+                    return 1
+                    ;;
+                *)
+                    log-warn "dc bridge: unsupported driver '$driver' for network '$net'"
+                    return 1
+                    ;;
+            esac
+            ;;
 
         *)   docker container "$@" ;;
     esac
