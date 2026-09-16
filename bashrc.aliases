@@ -176,8 +176,128 @@ dc() {
             esac
             ;;
 
+        logf) shift
+            __dc_logf "$@"
+            ;;
+
         *)   docker container "$@" ;;
     esac
+}
+
+__dc_logf() {
+    local usage="Usage: dc logf [-o <file>] [--tee] [docker-native-options] <container>"
+    if [ -z "$1" ]; then
+        echo "$usage"
+        return 1
+    fi
+    if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
+        echo "$usage"
+        echo ""
+        echo "Save container logs to a file"
+        echo "Default file: <container>_<timestamp>.log"
+        echo ""
+        echo "Custom options:"
+        echo "  -o, --out <file>   Write logs to <file>"
+        echo "  --tee              Also print logs to stdout"
+        echo ""
+        echo "Docker native options:"
+        echo "  -f, --follow       Follow log output"
+        echo "  -t, --timestamps   Show timestamps"
+        echo "  --tail N           Only show last N lines"
+        echo "  --since TIME       Show logs since TIME"
+        echo "  --until TIME       Show logs before TIME"
+        echo "  --details          Show extra details"
+        echo ""
+        echo "The container name must be the last argument."
+        echo ""
+        echo "Examples:"
+        echo "  dc logf mycontainer                       # file only     -> mycontainer_<ts>.log"
+        echo "  dc logf --tee mycontainer                 # file + stdout -> mycontainer_<ts>.log"
+        echo "  dc logf -o /tmp/my.log mycontainer        # file only     -> /tmp/my.log"
+        echo "  dc logf --tee -f mycontainer              # follow, file + stdout"
+        echo "  dc logf -t --tail 100 --tee mycontainer   # timestamps, last 100, file + stdout"
+        return 0
+    fi
+
+    # --- stdin mode: read container names, recurse per container ---
+    # Enter if: stdin is not a tty AND there is no explicit container
+    # (no args, or the last arg is an option, not a container).
+    if [ ! -t 0 ] && { [ $# -eq 0 ] || [[ "${!#}" == -* ]]; }; then
+        local -a names=()
+        mapfile -t names
+        if [ ${#names[@]} -eq 0 ]; then
+            log-error "no container names on stdin"
+            return 1
+        fi
+        local c
+        for c in "${names[@]}"; do
+            [ -z "$c" ] && continue
+            __dc_logf "$@" "$c" </dev/null
+        done
+        return 0
+    fi
+
+    # --- single-container mode ---
+    local container="${!#}"
+    if [[ "$container" == -* ]]; then
+        log-error "container name must be the last argument"
+        echo "$usage"
+        return 1
+    fi
+    set -- "${@:1:$#-1}"
+
+    local out=""
+    local use_tee=0
+    local docker_opts=()
+
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            -o|--out)
+                if [ -z "$2" ]; then
+                    log-error "option -o requires a file path"
+                    return 1
+                fi
+                out="$2"
+                shift 2
+                ;;
+            --tee)
+                use_tee=1
+                shift
+                ;;
+            *)
+                # everything else goes to docker logs as-is
+                docker_opts+=("$1")
+                shift
+                ;;
+        esac
+    done
+
+    # default file name: <container>_<YYYY-MM-DD_HH-MM-SS>.log
+    if [ -z "$out" ]; then
+        out="${container}_$(date +%Y-%m-%d_%H-%M-%S).log"
+    fi
+
+    # check container exists
+    if ! docker inspect "$container" >/dev/null 2>&1; then
+        log-error "container '$container' not found"
+        return 1
+    fi
+
+    # make sure the target directory is writable
+    local out_dir
+    out_dir=$(dirname -- "$out")
+    if [ ! -w "$out_dir" ]; then
+        log-error "cannot write to '$out_dir'"
+        return 1
+    fi
+
+    if [ "$use_tee" -eq 1 ]; then
+        docker logs "${docker_opts[@]}" "$container" 2>&1 | nocolor | tee -- "$out"
+    else
+        log-info-raw 'Writing to %s... ' "$out" >&2
+        docker logs "${docker_opts[@]}" "$container" 2>&1 | nocolor >"$out"
+        log-info-raw "${SF_GREEN}done${SF_NORM}\n" >&2
+    fi
 }
 
 # ---------------------------------------------------------------------
