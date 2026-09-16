@@ -10,8 +10,21 @@ __auto_complete_dc() {
     # If first argument is a command
     if [[ $cword -eq 1 ]]; then
         # Suggest commands
-        local opts="br bridge ls exec start stop restart rm logs ps inspect ns"
+        local opts="br bridge exec start stop restart rm logs logf ls ns ps inspect"
         mapfile -t COMPREPLY < <(compgen -W "$opts" -- "$cur")
+        return 0
+    fi
+
+    # --- br / bridge command ---
+    if [[ ${words[1]} == "br" || ${words[1]} == "bridge" ]]; then
+        if [[ $cword -eq 2 ]]; then
+            if [[ "$cur" == "-"* ]]; then
+                local opts="--help"
+                mapfile -t COMPREPLY < <(compgen -W "$opts" -- "$cur")
+            else
+                mapfile -t COMPREPLY < <(docker network ls --format '{{.Name}}' 2>/dev/null | grep "^$cur")
+            fi
+        fi
         return 0
     fi
 
@@ -44,15 +57,15 @@ __auto_complete_dc() {
         return 0
     fi
 
-    # --- br / bridge command ---
-    if [[ ${words[1]} == "br" || ${words[1]} == "bridge" ]]; then
-        if [[ $cword -eq 2 ]]; then
-            if [[ "$cur" == "-"* ]]; then
-                local opts="--help"
-                mapfile -t COMPREPLY < <(compgen -W "$opts" -- "$cur")
-            else
-                mapfile -t COMPREPLY < <(docker network ls --format '{{.Name}}' 2>/dev/null | grep "^$cur")
-            fi
+    # --- logf command ---
+    if [[ ${words[1]} == "logf" ]]; then
+        if [[ "$cur" == -* ]]; then
+            # option
+            local opts="--out= -q --quiet -f --follow -t --timestamps --tail --since --until --details -h --help"
+            mapfile -t COMPREPLY < <(compgen -W "$opts" -- "$cur")
+        else
+            # container
+            mapfile -t COMPREPLY < <(docker ps --format '{{.Names}}' 2>/dev/null | grep "^$cur")
         fi
         return 0
     fi
