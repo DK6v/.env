@@ -7,22 +7,22 @@ __auto_complete_dc() {
     local cur words cword
     _init_completion || return
 
-    # If first argument is a subcommand
+    # If first argument is a command
     if [[ $cword -eq 1 ]]; then
-        # Suggest subcommands
-        local opts="ls exec start stop restart rm logs ps inspect ns"
+        # Suggest commands
+        local opts="br bridge ls exec start stop restart rm logs ps inspect ns"
         mapfile -t COMPREPLY < <(compgen -W "$opts" -- "$cur")
         return 0
     fi
 
-    # For ls subcommand, suggest docker options
+    # --- ls command ---
     if [[ ${words[1]} == "ls" ]]; then
         local opts="-a --all --filter --format"
         mapfile -t COMPREPLY < <(compgen -W "$opts" -- "$cur")
         return 0
     fi
 
-    # For ns subcommand
+    # --- ns command ---
     if [[ ${words[1]} == "ns" ]]; then
         if [[ $cword -eq 2 ]]; then
             if [[ "$cur" == "-"* ]]; then
@@ -44,7 +44,20 @@ __auto_complete_dc() {
         return 0
     fi
 
-    # For other subcommands, suggest container names
+    # --- br / bridge command ---
+    if [[ ${words[1]} == "br" || ${words[1]} == "bridge" ]]; then
+        if [[ $cword -eq 2 ]]; then
+            if [[ "$cur" == "-"* ]]; then
+                local opts="--help"
+                mapfile -t COMPREPLY < <(compgen -W "$opts" -- "$cur")
+            else
+                mapfile -t COMPREPLY < <(docker network ls --format '{{.Name}}' 2>/dev/null | grep "^$cur")
+            fi
+        fi
+        return 0
+    fi
+
+    # For other commands, suggest container names
     case "${words[1]}" in
         exec|start|stop|restart|rm|logs|inspect)
             mapfile -t COMPREPLY < <(docker ps -a --format '{{.Names}}' | grep "^$cur")
