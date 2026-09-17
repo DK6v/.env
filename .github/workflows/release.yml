@@ -1,0 +1,65 @@
+name: Create Release Archive
+
+on:
+  push:
+    tags:
+      - 'v*' # Triggers on pushing a tag starting with "v" (e.g., v1.0.0)
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to release (e.g., v0.1.0)'
+        required: true
+        type: string
+
+permissions:
+  contents: write # Required to create a release
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5 # Обновлено с v4 на v5 для поддержки Node 24
+        with:
+          ref: ${{ inputs.tag || github.ref }}
+
+      - name: Resolve tag
+        run: |
+          set -euo pipefail
+          tag="${{ inputs.tag || github.ref_name }}"
+          echo "TAG=${tag}" >> "$GITHUB_ENV"
+          echo "Resolved tag: ${tag}"
+
+      - name: Build archive
+        run: |
+          set -euo pipefail
+          name="env"
+          tag="${TAG}"
+          archive="${name}_${tag}.tar.gz"
+          archive="$(printf '%s' "$archive" | tr -d '[:space:]' | tr -d '\000-\037')"
+
+          artifacts_dir="${RUNNER_TEMP}/artifacts"
+          mkdir -p "${artifacts_dir}"
+          out="${artifacts_dir}/${archive}"
+
+          # Build the archive from tracked files only (no .git)
+          git -C "$GITHUB_WORKSPACE" archive --format=tar.gz HEAD -o "${out}"
+
+          if [ ! -s "${out}" ]; then
+            echo "Build archive failed: ${out} was not created" >&2
+            ls -la "${artifacts_dir}" >&2 || true
+            exit 1
+          fi
+
+          echo "ZIP_NAME=${archive}" >> "$GITHUB_ENV"
+          echo "ARTIFACTS_DIR=${artifacts_dir}" >> "$GITHUB_ENV"
+          echo "Built archive: ${out} ($(du -h "${out}" | cut -f1))"
+
+      - name: Upload Release Asset
+        uses: softprops/action-gh-release@v3 # Обновлено с v2 на v3 для поддержки Node 24
+        with:
+          tag_name: ${{ env.TAG }}
+          files: ${{ env.ARTIFACTS_DIR }}/${{ env.ZIP_NAME }}
+          fail_on_unmatched_files: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

@@ -55,3 +55,11 @@ log-result "Source file ./.env/bashrc.common"
 if [ -f ${ENV_PATH}/bashrc.user ]; then
     . ${ENV_PATH}/bashrc.user
 fi
+
+# ---------------------------------------------------------------------
+# Version
+# ---------------------------------------------------------------------
+
+if [ -f ${ENV_PATH}/version.env ]; then
+    . ${ENV_PATH}/version.env
+fi
