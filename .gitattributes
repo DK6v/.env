@@ -1,0 +1,4 @@
+# Exclude CI/tooling files from release archives (git archive, GitHub "Download ZIP")
+.github/         export-ignore
+.gitignore       export-ignore
+.gitattributes   export-ignore
