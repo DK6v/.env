@@ -8,22 +8,28 @@
 # ---------------------------------------------------------------------
 
 if [ -z "$ENV_FILE" ]; then
-    export ENV_PATH=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+   export ENV_PATH=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
 fi
 
 if [[ ! "${PATH}" =~ ((^|:)${ENV_PATH}(:|$)) ]]; then
-    export PATH=${ENV_PATH}:$PATH;
+   export PATH=${ENV_PATH}:$PATH;
 fi
 
 if [[ ! "${PATH}" =~ ((^|:)${ENV_PATH}/bin(:|$)) ]]; then
-    export PATH=${ENV_PATH}/bin:$PATH;
+   export PATH=${ENV_PATH}/bin:$PATH;
 fi
 
 # ---------------------------------------------------------------------
-# Source functions
+# General functions
 # ---------------------------------------------------------------------
 
-source "${ENV_PATH}/bashrc.script"
+if [ -f ${ENV_PATH}/bashrc.logging ]; then
+   . ${ENV_PATH}/bashrc.logging
+fi
+
+if [ -f ${ENV_PATH}/bashrc.script ]; then
+   . ${ENV_PATH}/bashrc.script
+fi
 
 # ---------------------------------------------------------------------
 # Common environment
@@ -39,11 +45,11 @@ PS1="\t \[${SF_BOLD}\]\[${SF_GREEN}\]\u@\h \[${SF_BLUE}\]\w \[${SF_GREEN}\]\$ \[
 umask 002
 
 if [ -f ${ENV_PATH}/bashrc.aliases ]; then
-    . ${ENV_PATH}/bashrc.aliases
+   . ${ENV_PATH}/bashrc.aliases
 fi
 
 if [ -f ${ENV_PATH}/bashrc.complete ]; then
-    . ${ENV_PATH}/bashrc.complete
+   . ${ENV_PATH}/bashrc.complete
 fi
 
 log-result "Source file ./.env/bashrc.common"
@@ -53,7 +59,7 @@ log-result "Source file ./.env/bashrc.common"
 # ---------------------------------------------------------------------
 
 if [ -f ${ENV_PATH}/bashrc.user ]; then
-    . ${ENV_PATH}/bashrc.user
+   . ${ENV_PATH}/bashrc.user
 fi
 
 # ---------------------------------------------------------------------
@@ -61,5 +67,5 @@ fi
 # ---------------------------------------------------------------------
 
 if [ -f ${ENV_PATH}/version.env ]; then
-    . ${ENV_PATH}/version.env
+   . ${ENV_PATH}/version.env
 fi

@@ -8,7 +8,10 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
-- Template for future changelog notes.
+- `pwgen16` function — generates a cryptographically secure 16-character password.
+
+### Changed
+- Split `bashrc.script` into `bashrc.script` and `bashrc.logging`.
 
 ## [0.1.0] - 2026-09-16
 
