@@ -13,32 +13,33 @@ function global_color_scheme() {
         global_color_scheme_tput
     fi
 }
-export -f global_color_scheme
 
 function global_color_scheme_ascii() {
-    if [ -t 1 ]; then
+    if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
         # Style
-        SF_NORM="\e\[0m\]"
-        SF_BOLD="\e\[1m\]"
-        SF_ITALIC="\e\[3m\]"
-        SF_UNDERLINE="\e\[4m\]"
-        # 8-bit colors
-        SF_BLACK="\e\[38;5;0m\]"
-        SF_RED="\e\[38;5;1m\]"
-        SF_GREEN="\e\[38;5;2m\]"
-        SF_YELLOW="\e\[38;5;3m\]"
-        SF_BLUE="\e\[38;5;4m\]"
-        SF_MAGENTA="\e\[38;5;5m\]"
-        SF_CYAN="\e\[38;5;6m\]"
-        SF_LGREY="\e\[38;5;7m\]"
-        SF_DGREY="\e\[38;5;8m\]"
-        SF_LRED="\e\[38;5;9m\]"
-        SF_LGREEN="\e\[38;5;10m\]"
-        SF_LYELLOW="\e\[38;5;11m\]"
-        SF_LBLUE="\e\[38;5;12m\]"
-        SF_LMAGENTA="\e\[38;5;13m\]"
-        SF_LCYAN="\e\[38;5;14m\]"
-        SF_WHITE="\e\[38;5;15m\]"
+        SF_NORM=$'\[\e[0m\]'
+        SF_BOLD=$'\[\e[1m\]'
+        SF_ITALIC=$'\[\e[3m\]'
+        SF_UNDERLINE=$'\[\e[4m\]'
+        # 8-bit colors (foreground)
+        SF_BLACK=$'\[\e[38;5;0m\]'
+        SF_RED=$'\[\e[38;5;1m\]'
+        SF_GREEN=$'\[\e[38;5;2m\]'
+        SF_YELLOW=$'\[\e[38;5;3m\]'
+        SF_BLUE=$'\[\e[38;5;4m\]'
+        SF_MAGENTA=$'\[\e[38;5;5m\]'
+        SF_CYAN=$'\[\e[38;5;6m\]'
+        SF_LGREY=$'\[\e[38;5;7m\]'
+        SF_DGREY=$'\[\e[38;5;8m\]'
+        SF_LRED=$'\[\e[38;5;9m\]'
+        SF_LGREEN=$'\[\e[38;5;10m\]'
+        SF_LYELLOW=$'\[\e[38;5;11m\]'
+        SF_LBLUE=$'\[\e[38;5;12m\]'
+        SF_LMAGENTA=$'\[\e[38;5;13m\]'
+        SF_LCYAN=$'\[\e[38;5;14m\]'
+        SF_WHITE=$'\[\e[38;5;15m\]'
+        # commands
+        SF_CLEAR=$'\e[K'
     fi
 }
 
@@ -83,59 +84,82 @@ function global_result_codes() {
     ENOPKG=129  # Required package not found
     EUNRCH=130  # Host unreachable
 }
-export -f global_result_codes
 
 # Logging level (high -> low):
-#   error -> warning -> info -> debug
-export LOG_LEVEL="info"
+#   off < fatal < error < warn < info < debug < trace
+declare -A LOG_LEVELS=(
+    [off]=0
+    [fatal]=1
+    [error]=2
+    [warn]=3
+    [info]=4
+    [debug]=5
+    [trace]=6
+)
+: "${LOG_LEVEL:=info}"
+export LOG_LEVEL
+
+_log_enabled() {
+    local want="$1"
+    local cur="${LOG_LEVELS[$LOG_LEVEL]:-4}"
+    local need="${LOG_LEVELS[$want]:-4}"
+    [ "$need" -le "$cur" ]
+}
 
 # Print a descriptive message
 # Arguments: <message>
 # Rerurn: formatted string
-function log-debug()  { [[ "$LOG_LEVEL" =~ ^(debug)$ ]] &&
-                        printf -- "Debug: [%s] %s\n" \
-                                  "${FUNCNAME[1]}:${BASH_LINENO[0]}" "$*"; }
-function log-info()   { [[ "$LOG_LEVEL" =~ ^(info|debug)$ ]] &&
-                        echo -e "${SF_LBLUE}Info${SF_NORM}: $*"; }
-function log-warn()   { [[ "$LOG_LEVEL" =~ ^(warn.*|info|debug)$ ]] &&
-                        echo -e "${SF_YELLOW}Warning${SF_NORM}: $*" >&2; } # error
-function log-error()  { echo -e "${SF_RED}Error${SF_NORM}: $*" >&2; } # error
 
-export -f log-debug
-export -f log-info
-export -f log-warn
-export -f log-error
+function log-debug() {
+    _log_enabled debug || return 0
+    printf -- "Debug: [%s] %s\n" "${FUNCNAME[1]}:${BASH_LINENO[0]}" "$*" >&2
+}
+
+function log-info() {
+    _log_enabled info || return 0
+    echo -e "${SF_LBLUE}Info${SF_NORM}: $*" >&2
+}
+
+function log-warn() {
+    _log_enabled warn || return 0
+    echo -e "${SF_YELLOW}Warning${SF_NORM}: $*" >&2
+}
+
+function log-error() {
+    _log_enabled error || return 0
+    echo -e "${SF_RED}Error${SF_NORM}: $*" >&2
+}
 
 # Print a formatted message with a log level prefix, no trailing newline
 # Arguments: <format> [args...]  — printf-style format string, then values
 # Return:    formatted string to stdout (debug/info) or stderr (warn/error)
 #            nothing if LOG_LEVEL filters the level out
 # Example:   plog-info 'container %s started' "$name"
+
 function log-debug-fmt() {
-    [[ "$LOG_LEVEL" =~ ^(debug)$ ]] || return 0
+    _log_enabled debug || return 0
     local fmt="$1"; shift
     printf -- "Debug: [%s] ${fmt}" \
            "${FUNCNAME[1]}:${BASH_LINENO[0]}" "$@"
 }
+
 function log-info-fmt() {
-    [[ "$LOG_LEVEL" =~ ^(info|debug)$ ]] || return 0
+    _log_enabled info || return 0
     local fmt="$1"; shift
     printf -- "${SF_LBLUE}Info${SF_NORM}: ${fmt}" "$@"
 }
+
 function log-warn-fmt() {
-    [[ "$LOG_LEVEL" =~ ^(warn.*|info|debug)$ ]] || return 0
+    _log_enabled warn || return 0
     local fmt="$1"; shift
     printf -- "${SF_YELLOW}Warning${SF_NORM}: ${fmt}" "$@" >&2
 }
+
 function log-error-fmt() {
+    _log_enabled error || return 0
     local fmt="$1"; shift
     printf -- "${SF_RED}Error${SF_NORM}: ${fmt}" "$@" >&2
 }
-
-export -f log-debug-fmt
-export -f log-info-fmt
-export -f log-warn-fmt
-export -f log-error-fmt
 
 # Print a formatted message without a level prefix, with a trailing newline
 # Arguments: <format> [args...]  — printf-style format string, then values
@@ -148,43 +172,86 @@ function log-debug-raw() {
     local fmt="$1"; shift
     printf -- "${fmt}" "$@"
 }
+
 function log-info-raw() {
     [[ "$LOG_LEVEL" =~ ^(info|debug)$ ]] || return 0
     local fmt="$1"; shift
     printf -- "${fmt}" "$@"
 }
+
 function log-warn-raw() {
     [[ "$LOG_LEVEL" =~ ^(warn.*|info|debug)$ ]] || return 0
     local fmt="$1"; shift
     printf -- "${fmt}" "$@" >&2
 }
+
 function log-error-raw() {
     local fmt="$1"; shift
     printf -- "${fmt}" "$@" >&2
 }
 
-export -f log-debug-raw
-export -f log-info-raw
-export -f log-warn-raw
-export -f log-error-raw
+# Print a progress line in systemd style, with in-place update in a tty
+# Arguments: [<format> [args...]]
+#            — printf-style format string and values for the message;
+#              if omitted, the message stored by log-progress-start is reused
+# Return:    formatted string to stderr
+#            nothing if LOG_LEVEL filters the level out
+# Notes:
+#   - In a tty (stderr) uses \r\033[K so that log-progress-start can be
+#     overwritten by a final status (done / fail / warn / skip).
+#   - In non-tty (file, pipe, CI) prints each line separately with a trailing \n.
+#   - log-progress-start stores its message in $_PROGRESS_MSG for later reuse.
+#   - Level mapping: start/done/skip -> info, warn -> warn, fail -> error.
+# Example:   log-progress-start 'Saving logs to %s...' "$out"
+#            log-progress-done  'Saved logs to %s' "$out"
+
+_PROGRESS_MSG=""
+
+_log_progress() {
+    local status="$1" color="$2" final="$3"; shift 3
+    local fmt="${1:-%s}" msg
+    printf -v msg -- "$fmt" "${@:2}"
+    [ $# -eq 0 ] && msg="$_PROGRESS_MSG"
+    if [ -t 2 ]; then
+        printf '\r%s[%s%s%s] %s' "$SF_CLEAR" "$color" "$status" "$SF_NORM" "$msg" >&2
+        [ "$final" -eq 1 ] && printf '\n' >&2
+    else
+        printf '[%s%s%s] %s\n' "$color" "$status" "$SF_NORM" "$msg" >&2
+    fi
+}
+
+log-progress-start() {
+    local msg
+    printf -v msg -- "${1:-%s}" "${@:2}"
+    _PROGRESS_MSG="$msg"
+    _log_progress ' .. ' '' 0 "$@"
+}
+log-progress-done()  { _log_progress ' OK ' "$SF_GREEN"  1 "$@"; }
+log-progress-fail()  { _log_progress 'FAIL' "$SF_RED"    1 "$@"; }
+log-progress-warn()  { _log_progress 'WARN' "$SF_YELLOW" 1 "$@"; }
+log-progress-skip()  { _log_progress 'SKIP' ''           1 "$@"; }
 
 # Print a result message
 # Arguments:
 #   <message> - descriptive message
 #   [<result>] - result code: 0 - success, any other value indicates failure.
-function log-result() { [ ${2:-0} ] \
-                          && echo -e "[${SF_GREEN}OK${SF_NORM}]   $*" \
-                          || echo -e "[${SF_RED}FAIL${SF_NORM}] $*"; }
-export -f log-result
+
+function log-result() {
+    local msg="$1"
+    local code="${2:-0}"
+    if [ "$code" -eq 0 ]; then
+        echo -e "[ ${SF_GREEN}OK${SF_NORM} ] ${msg}"
+    else
+        echo -e "[${SF_RED}FAIL${SF_NORM}] ${msg}";
+    fi
+}
 
 # Strip ANSI escape sequences (colors, cursor moves) from stdin.
 # Unbuffered, safe for live streams like `docker logs -f`.
+
 nocolor() {
     awk '{ gsub(/\033\[[0-9;]*[a-zA-Z]/, ""); print; fflush() }'
 }
-export -f nocolor
 
 # Apply color scheme
-global_color_scheme;
-
-log-result "Source file ./.env/bashrc.logging"
+global_color_scheme

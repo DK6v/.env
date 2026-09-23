@@ -7,65 +7,64 @@
 # Extend PATH variable
 # ---------------------------------------------------------------------
 
-if [ -z "$ENV_FILE" ]; then
-   export ENV_PATH=$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)
+if [ -z "$ENV_PATH" ]; then
+    ENV_PATH="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+    export ENV_PATH
 fi
 
-if [[ ! "${PATH}" =~ ((^|:)${ENV_PATH}(:|$)) ]]; then
-   export PATH=${ENV_PATH}:$PATH;
-fi
+case ":$PATH:" in
+    *":${ENV_PATH}:"*) ;;
+    *) export PATH="${ENV_PATH}:$PATH" ;;
+esac
 
-if [[ ! "${PATH}" =~ ((^|:)${ENV_PATH}/bin(:|$)) ]]; then
-   export PATH=${ENV_PATH}/bin:$PATH;
-fi
+case ":$PATH:" in
+    *":${ENV_PATH}/bin:"*) ;;
+    *) export PATH="${ENV_PATH}/bin:$PATH" ;;
+esac
 
 # ---------------------------------------------------------------------
 # General functions
 # ---------------------------------------------------------------------
 
-if [ -f ${ENV_PATH}/bashrc.logging ]; then
-   . ${ENV_PATH}/bashrc.logging
-fi
-
-if [ -f ${ENV_PATH}/bashrc.script ]; then
-   . ${ENV_PATH}/bashrc.script
-fi
+source "${ENV_PATH}/bashrc.script"
+source "${ENV_PATH}/bashrc.logging"
 
 # ---------------------------------------------------------------------
 # Common environment
 # ---------------------------------------------------------------------
 
-# Apply color scheme
-global_color_scheme;
+# --- apply color scheme ---
+global_color_scheme
 
-export EDITOR="/usr/bin/vim"
 PS1="\t \[${SF_BOLD}\]\[${SF_GREEN}\]\u@\h \[${SF_BLUE}\]\w \[${SF_GREEN}\]\$ \[${SF_NORM}\]"
 
-# Mask 002 (not 000) is required to make RSA (ssh-keygen) work
-umask 002
-
-if [ -f ${ENV_PATH}/bashrc.aliases ]; then
-   . ${ENV_PATH}/bashrc.aliases
-fi
-
-if [ -f ${ENV_PATH}/bashrc.complete ]; then
-   . ${ENV_PATH}/bashrc.complete
-fi
-
-log-result "Source file ./.env/bashrc.common"
+retval=0
+for f in \
+    bashrc.aliases \
+    bashrc.certs \
+    bashrc.complete \
+    bashrc.docker
+do
+    source "${ENV_PATH}/$f" || {
+        retval=$?
+        break
+    }
+done
+log-result "Source file bashrc.common" $retval
 
 # ---------------------------------------------------------------------
 # User environment
 # ---------------------------------------------------------------------
 
-if [ -f ${ENV_PATH}/bashrc.user ]; then
-   . ${ENV_PATH}/bashrc.user
+if [ -f "${ENV_PATH}/bashrc.user" ]; then
+    source "${ENV_PATH}/bashrc.user"
+    log-result "Source file bashrc.user" $?
 fi
 
 # ---------------------------------------------------------------------
 # Version
 # ---------------------------------------------------------------------
 
-if [ -f ${ENV_PATH}/version.env ]; then
-   . ${ENV_PATH}/version.env
+if [ -f "${ENV_PATH}/version.env" ]; then
+    source "${ENV_PATH}/version.env"
 fi
