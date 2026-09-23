@@ -10,7 +10,7 @@ __auto_complete_dc() {
     # If first argument is a command
     if [[ $cword -eq 1 ]]; then
         # Suggest commands
-        local opts="br bridge exec start stop restart rm logs logf ls ns ps inspect"
+        local opts="br bridge exec inspect logs logf ls list restart rm start stop ns namespace ps"
         mapfile -t COMPREPLY < <(compgen -W "$opts" -- "$cur")
         return 0
     fi
@@ -108,5 +108,3 @@ __auto_complete_cert() {
     esac
 }
 complete -F __auto_complete_cert cert-list cert-info
-
-log-result "Source file ./.env/bashrc.complete"

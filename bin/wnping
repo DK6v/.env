@@ -2,6 +2,9 @@
 
 readonly nping="/usr/bin/nping"
 
+: "${ENV_PATH:?set to the path of the common environment (e.g. \$HOME/.env)}"
+source "${ENV_PATH}/bashrc.logging"
+
 # LOG_LEVEL='debug'
 
 # Apply color scheme, see ~/.env/bashrc.common for details.

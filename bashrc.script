@@ -26,6 +26,3 @@ pwgen16() {
     done
     printf '%s\n' "$pwd"
 }
-export -f pwgen16
-
-log-result "Source file ./.env/bashrc.script"
