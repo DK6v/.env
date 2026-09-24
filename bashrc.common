@@ -26,7 +26,6 @@ esac
 # General functions
 # ---------------------------------------------------------------------
 
-source "${ENV_PATH}/bashrc.script"
 source "${ENV_PATH}/bashrc.logging"
 
 # ---------------------------------------------------------------------
@@ -35,21 +34,31 @@ source "${ENV_PATH}/bashrc.logging"
 
 # --- apply color scheme ---
 global_color_scheme
-
 PS1="\t \[${SF_BOLD}\]\[${SF_GREEN}\]\u@\h \[${SF_BLUE}\]\w \[${SF_GREEN}\]\$ \[${SF_NORM}\]"
 
+# --- source environment ---
 retval=0
-for f in \
-    bashrc.aliases \
-    bashrc.certs \
-    bashrc.complete \
-    bashrc.docker
-do
-    source "${ENV_PATH}/$f" || {
-        retval=$?
-        break
-    }
-done
+if [ "$retval" -eq 0 ]; then
+    for file in \
+        bashrc.aliases \
+        bashrc.certs \
+        bashrc.docker \
+        bashrc.script
+    do
+        source "${ENV_PATH}/$file" || {
+            retval=$?
+            break
+        }
+    done
+fi
+if [ "$retval" -eq 0 ]; then
+    for file in "${ENV_PATH}/bashrc.complete.d/"*; do
+        source "$file" || {
+            retval=$?
+            break
+        }
+    done
+fi
 log-result "Source file bashrc.common" $retval
 
 # ---------------------------------------------------------------------
