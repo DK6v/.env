@@ -1,0 +1,432 @@
+# bashrc.complete.d/tmux
+# shellcheck shell=bash
+# shellcheck source=/dev/null
+
+__auto_complete_tmux() {
+    local cur prev words cword
+    _init_completion || return
+
+    # --- helpers: list tmux objects ---
+    _tmux_sessions() { tmux list-sessions -F '#{session_name}' 2>/dev/null; }
+    _tmux_windows()  { tmux list-windows  -F '#{window_name}'  2>/dev/null; }
+    _tmux_panes()    { tmux list-panes    -F '#{pane_id}'      2>/dev/null; }
+    _tmux_clients()  { tmux list-clients  -F '#{client_name}'  2>/dev/null; }
+    _tmux_keys() {
+        local table="${1:-root}"
+        printf -v tablestr '%q' "$table"
+        tmux list-keys -t "$tablestr" -F '#{key}' 2>/dev/null
+        tmux list-keys -T "$tablestr" -F '#{key}' 2>/dev/null
+    }
+
+    # --- no subcommand yet: global options + all commands ---
+    if [[ $cword -eq 1 ]]; then
+        if [[ "$cur" == -* ]]; then
+            mapfile -t COMPREPLY < <(compgen -W "-2 -8 -C -c -f -L -l -N -S -u -v -V" -- "$cur")
+        else
+            mapfile -t COMPREPLY < <(compgen -W "\
+attach attach-session bind bind-key choose-buffer choose-client \
+choose-session choose-tree choose-window clock-mode command-prompt \
+confirm-before copy-mode detach detach-client display display-messages \
+display-panes find-window findw has has-session if-shell if \
+join-pane joinp kill-pane killp kill-server kill-session kill-window \
+last-window last list-buffers list-clients list-commands list-keys \
+list-panes list-sessions list-windows load-buffer lock-client lock-server \
+lock-session ls lsc lsk lsp lsw move-window movew new new-session \
+new-window next-layout next-window next paste-buffer pipe-pane pipep \
+previous-layout previous-window prev rename rename-session rename-window \
+resize-pane resize-window resizep resizew respawn-pane respawnp \
+respawn-window respawnw rotate-window rotatew run run-shell \
+select-layout select-pane select-window selectl selectp selectw \
+send send-keys send-prefix server-info set set-buffer set-environment \
+set-option set-window-option setenv setw show show-options source \
+source-file split-window splitw start start-server swap-pane swapp \
+swap-window swapw switch switch-client unbind unbind-key wait wait-for" -- "$cur")
+        fi
+        return 0
+    fi
+
+    # --- find subcommand (skip global options) ---
+    local cmd="" i
+    for (( i=1; i < cword; i++ )); do
+        case "${words[i]}" in
+            -2|-8|-C|-u|-v|-V) ;;
+            -c|-f|-L|-l|-N|-S) (( i++ )) ;;
+            -*) ;;
+            *) cmd="${words[i]}"; break ;;
+        esac
+    done
+    [[ -z "$cmd" ]] && return 0
+
+    # --- key-name helper for bind/command positional ---
+    local common_keys="Enter Escape Space Tab BSpace DC Delete Up Down Left Right Home End PageUp PageDown C-c C-d C-z M-x"
+
+    # --- previous word is an option expecting a value ---
+    case "$prev" in
+        # -t: target session / window / pane / client depending on the command
+        -t)
+            case "$cmd" in
+                attach|attach-session|a|new-session|new|kill-session|switch|switch-client|has|has-session|rename|rename-session|list-sessions|ls|lock-session)
+                    mapfile -t COMPREPLY < <(compgen -W "$( _tmux_sessions )" -- "$cur"); return 0 ;;
+                new-window|neww|select-window|selectw|kill-window|rename-window|move-window|movew|swap-window|swapw|rotate-window|rotatew|select-layout|selectl|next-layout|next-window|next|previous-window|prev|last-window|last|respawn-window|respawnw|resize-window|resizew)
+                    mapfile -t COMPREPLY < <(compgen -W "$( _tmux_windows )" -- "$cur"); return 0 ;;
+                split-window|splitw|select-pane|selectp|resize-pane|resizep|send-keys|send|run-shell|run|respawn-pane|respawnp|swap-pane|swapp|pipe-pane|pipep|send-prefix|display-messages|display|copy-mode|clock-mode|if-shell|if)
+                    mapfile -t COMPREPLY < <(compgen -W "$( _tmux_panes )" -- "$cur"); return 0 ;;
+                display-panes|lock-client)
+                    mapfile -t COMPREPLY < <(compgen -W "$( _tmux_clients )" -- "$cur"); return 0 ;;
+            esac
+            ;;
+        # -s: source / target session (new-session -s is a new name)
+        -s)
+            case "$cmd" in
+                detach|detach-client|move-window|movew|swap-window|swapw|swap-pane|swapp|list-panes|lsp)
+                    mapfile -t COMPREPLY < <(compgen -W "$( _tmux_sessions )" -- "$cur"); return 0 ;;
+            esac
+            ;;
+        # -c: start directory / target client
+        -c)
+            case "$cmd" in
+                display-panes|switch|switch-client|display-popup)
+                    mapfile -t COMPREPLY < <(compgen -W "$( _tmux_clients )" -- "$cur"); return 0 ;;
+                *)
+                    mapfile -t COMPREPLY < <(compgen -d -- "$cur"); return 0 ;;
+            esac
+            ;;
+        # -F: format string, nothing to suggest
+        -F)
+            return 0 ;;
+        # -T: key-table (bind / list-keys / switch-client)
+        -T)
+            mapfile -t COMPREPLY < <(compgen -W "root prefix copy-mode copy-mode-vi" -- "$cur"); return 0 ;;
+        # -N: repeat count / note
+        -N|-p|-l|-e|-r|-x|-y|-d|-h|-w)
+            return 0 ;;
+    esac
+
+    # --- subcommand-specific completion ---
+    case "$cmd" in
+        # === sessions ===
+        attach|attach-session|a)
+            # `tmux attach [-t target]` ; session name goes via -t.
+            # No positional arguments, so after a space (empty cur) the
+            # option list is offered as well.
+            if [[ "$cur" == -* || -z "$cur" ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-d -E -r -x -c -f -t" -- "$cur")
+            fi
+            ;;
+        kill-session)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-a -C -t" -- "$cur")
+            fi
+            ;;
+        has|has-session|start|start-server|lock-server|lock-session)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-t" -- "$cur")
+            fi
+            ;;
+
+        # === new-session ===
+        new|new-session)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-A -d -D -E -P -X -c -e -f -F -n -s -t -x -y" -- "$cur")
+            elif [[ $cword -eq 2 ]]; then
+                # positional: shell-command
+                mapfile -t COMPREPLY < <(compgen -c -- "$cur")
+            fi
+            ;;
+
+        # === windows ===
+        new-window|neww)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-a -b -d -F -P -S -c -e -n -t" -- "$cur")
+            elif [[ $cword -eq 2 ]]; then
+                # positional: shell-command
+                mapfile -t COMPREPLY < <(compgen -c -- "$cur")
+            fi
+            ;;
+        select-window|selectw)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-l -n -p -T -t" -- "$cur")
+            fi
+            ;;
+        kill-window)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-a -t" -- "$cur")
+            fi
+            ;;
+        move-window|movew)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-d -k -r -s -t" -- "$cur")
+            fi
+            ;;
+        swap-window|swapw)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-d -s -t" -- "$cur")
+            fi
+            ;;
+        rotate-window|rotatew)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-D -U -t" -- "$cur")
+            fi
+            ;;
+        select-layout|selectl)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-E -n -o -p -t" -- "$cur")
+            else
+                # positional: layout name
+                mapfile -t COMPREPLY < <(compgen -W "even-horizontal even-vertical main-horizontal main-vertical tiled" -- "$cur")
+            fi
+            ;;
+        next-layout|next-window|next|previous-layout|previous-window|prev|last-window|last)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-a -t" -- "$cur")
+            fi
+            ;;
+        resize-window|resizew)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-A -D -L -R -U -x -y -t" -- "$cur")
+            else
+                mapfile -t COMPREPLY < <(compgen -W "1 2 5 10 20" -- "$cur")
+            fi
+            ;;
+
+        # === panes ===
+        split-window|splitw)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-b -d -f -h -I -l -P -p -t -v -Z -c -e" -- "$cur")
+            elif [[ $cword -eq 2 ]]; then
+                # positional: shell-command
+                mapfile -t COMPREPLY < <(compgen -c -- "$cur")
+            fi
+            ;;
+        select-pane|selectp)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-D -d -e -H -L -l -M -m -R -U -w -Z -T -t" -- "$cur")
+            fi
+            ;;
+        resize-pane|resizep)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-D -L -M -R -U -Z -x -y -t" -- "$cur")
+            else
+                # positional: adjustment value
+                mapfile -t COMPREPLY < <(compgen -W "1 2 5 10 20" -- "$cur")
+            fi
+            ;;
+        kill-pane|killp)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-a -t" -- "$cur")
+            fi
+            ;;
+        join-pane|joinp)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-b -d -f -h -l -p -s -t -v" -- "$cur")
+            fi
+            ;;
+        swap-pane|swapp)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-d -D -U -Z -s -t" -- "$cur")
+            fi
+            ;;
+        respawn-pane|respawnp)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-k -c -e -t" -- "$cur")
+            elif [[ $cword -eq 2 ]]; then
+                mapfile -t COMPREPLY < <(compgen -c -- "$cur")
+            fi
+            ;;
+        respawn-window|respawnw)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-k -c -e -t" -- "$cur")
+            elif [[ $cword -eq 2 ]]; then
+                mapfile -t COMPREPLY < <(compgen -c -- "$cur")
+            fi
+            ;;
+
+        # === send / run / copy ===
+        send|send-keys)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-l -M -R -X -N -t" -- "$cur")
+            else
+                # positional: key names
+                mapfile -t COMPREPLY < <(compgen -W "$common_keys" -- "$cur")
+            fi
+            ;;
+        send-prefix)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-2 -t" -- "$cur")
+            fi
+            ;;
+        run|run-shell)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-b -C -c -t" -- "$cur")
+            elif [[ $cword -eq 2 ]]; then
+                # positional: shell-command
+                mapfile -t COMPREPLY < <(compgen -c -- "$cur")
+            fi
+            ;;
+        pipe-pane|pipep)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-I -O -o -t" -- "$cur")
+            elif [[ $cword -eq 2 ]]; then
+                mapfile -t COMPREPLY < <(compgen -c -- "$cur")
+            fi
+            ;;
+        copy-mode)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-e -H -M -q -u -E -t" -- "$cur")
+            fi
+            ;;
+        clock-mode)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-t" -- "$cur")
+            fi
+            ;;
+
+        # === switch / detach ===
+        switch|switch-client)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-E -l -n -p -r -Z -c -t -T" -- "$cur")
+            fi
+            ;;
+        detach|detach-client)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-a -E -P -s -t" -- "$cur")
+            fi
+            ;;
+
+        # === list-* ===
+        list-sessions|ls)
+            mapfile -t COMPREPLY < <(compgen -W "-F -f" -- "$cur")
+            ;;
+        list-windows|lsw)
+            mapfile -t COMPREPLY < <(compgen -W "-a -F -f -t" -- "$cur")
+            ;;
+        list-panes|lsp)
+            mapfile -t COMPREPLY < <(compgen -W "-a -s -F -t" -- "$cur")
+            ;;
+        list-clients|lsc)
+            mapfile -t COMPREPLY < <(compgen -W "-F -f -t" -- "$cur")
+            ;;
+        list-keys|lsk)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-a -N -P -T" -- "$cur")
+            else
+                # positional: key
+                mapfile -t COMPREPLY < <(compgen -W "$common_keys" -- "$cur")
+            fi
+            ;;
+        list-buffers|load-buffer|set-buffer|paste-buffer)
+            mapfile -t COMPREPLY < <(compgen -W "-b -d -F -n -p -s -t -e" -- "$cur")
+            ;;
+        list-commands)
+            mapfile -t COMPREPLY < <(compgen -W "-F" -- "$cur")
+            ;;
+
+        # === rename ===
+        rename|rename-session)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-t" -- "$cur")
+            fi
+            # positional: new-name — nothing to suggest
+            ;;
+        rename-window)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-t" -- "$cur")
+            fi
+            # positional: new-name — nothing to suggest
+            ;;
+
+        # === show / source / set ===
+        show|show-options)
+            mapfile -t COMPREPLY < <(compgen -W "-A -g -H -p -q -s -t -v -w" -- "$cur")
+            ;;
+        set|set-option)
+            mapfile -t COMPREPLY < <(compgen -W "-a -F -g -p -q -s -u -w -t" -- "$cur")
+            ;;
+        set-window-option|setw)
+            mapfile -t COMPREPLY < <(compgen -W "-a -F -g -o -q -u -t" -- "$cur")
+            ;;
+        set-environment|setenv)
+            mapfile -t COMPREPLY < <(compgen -W "-F -g -h -r -u -t" -- "$cur")
+            ;;
+        source|source-file)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-F -n -q -v" -- "$cur")
+            else
+                # positional: path ...
+                mapfile -t COMPREPLY < <(compgen -f -- "$cur")
+            fi
+            ;;
+
+        # === bind / unbind ===
+        bind|bind-key)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-n -r -T -N" -- "$cur")
+            else
+                # positional: key, then command
+                mapfile -t COMPREPLY < <(compgen -W "$common_keys" -- "$cur")
+            fi
+            ;;
+        unbind|unbind-key)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-a -n -T -t" -- "$cur")
+            else
+                mapfile -t COMPREPLY < <(compgen -W "$common_keys" -- "$cur")
+            fi
+            ;;
+
+        # === display / find / choose ===
+        display|display-messages)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-a -I -N -p -F -t" -- "$cur")
+            fi
+            ;;
+        display-panes)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-b -d -t" -- "$cur")
+            fi
+            ;;
+        find-window|findw)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-i -C -N -r -T -Z -t" -- "$cur")
+            fi
+            ;;
+        choose-buffer|choose-client|choose-session|choose-tree|choose-window)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-F -O -f -K -N -r -s -w -G -Z -S -t" -- "$cur")
+            fi
+            ;;
+
+        # === misc ===
+        confirm-before|confirm)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-b -p -t" -- "$cur")
+            fi
+            ;;
+        if-shell|if)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-b -F -t" -- "$cur")
+            fi
+            ;;
+        wait|wait-for)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-L -S" -- "$cur")
+            fi
+            ;;
+        command-prompt)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-I -1 -p -t" -- "$cur")
+            fi
+            ;;
+        server-info)
+            ;;
+        lock-client)
+            if [[ "$cur" == -* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "-t" -- "$cur")
+            fi
+            ;;
+        kill-server)
+            # no options, no positional arguments
+            ;;
+    esac
+}
+complete -F __auto_complete_tmux tmux

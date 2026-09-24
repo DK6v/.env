@@ -9,6 +9,8 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ### Added
 - `pwgen16` function — generates a cryptographically secure 16-character password.
+- Command completions moved into `bashrc.complete.d` directory.
+- Added `tmux` commmand completions.
 
 ### Changed
 - Split `bashrc.script` into `bashrc.script` and `bashrc.logging`.
