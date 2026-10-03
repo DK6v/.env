@@ -1,0 +1,90 @@
+#! /usr/bin/env bash
+
+# shellcheck source=/dev/null
+# shellcheck disable=SC2016,SC2139
+
+# Completion for the docker wrapper (see bashrc.docker):
+# extra commands are completed here, everything else by the native docker completion.
+
+__auto_complete_docker() {
+    # Load the native completion on first use. The loader registers its own
+    # "complete" for docker, so restore ours afterwards.
+    if ! declare -F __start_docker >/dev/null; then
+        _completion_loader docker 2>/dev/null
+        complete -o default -F __auto_complete_docker docker
+        declare -F __start_docker >/dev/null || return 0
+    fi
+
+    local cur prev words cword
+    _init_completion || return
+
+    local group="${words[1]}" cmd="${words[2]}"
+
+    # --- docker container <cmd> / docker network <cmd>: native + extra commands ---
+    if [[ $cword -eq 2 ]]; then
+        __start_docker "$@"
+        local extra=()
+        case "$group" in
+            container) mapfile -t extra < <(compgen -W "logf ns namespace" -- "$cur") ;;
+            network)   mapfile -t extra < <(compgen -W "br bridge" -- "$cur") ;;
+        esac
+        COMPREPLY+=("${extra[@]}")
+        return 0
+    fi
+
+    # --- docker network br|bridge <network> ---
+    if [[ $group == "network" && ( $cmd == "br" || $cmd == "bridge" ) ]]; then
+        if [[ $cword -eq 3 ]]; then
+            if [[ "$cur" == "-"* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "--help" -- "$cur")
+            else
+                mapfile -t COMPREPLY < <(command docker network ls --format '{{.Name}}' 2>/dev/null | grep "^$cur")
+            fi
+        fi
+        return 0
+    fi
+
+    # --- docker container ns|namespace <container> [options] [--] <command> ---
+    if [[ $group == "container" && ( $cmd == "ns" || $cmd == "namespace" ) ]]; then
+        if [[ $cword -eq 3 ]]; then
+            if [[ "$cur" == "-"* ]]; then
+                mapfile -t COMPREPLY < <(compgen -W "--help" -- "$cur")
+            else
+                # running containers
+                mapfile -t COMPREPLY < <(command docker ps --format '{{.Names}}' 2>/dev/null | grep "^$cur")
+            fi
+        elif [[ $cword -eq 4 ]]; then
+            # nsenter options
+            mapfile -t COMPREPLY < <(compgen -W "--net --pid --mount --uts --ipc --" -- "$cur")
+        else
+            mapfile -t COMPREPLY < <(compgen -f -- "$cur")
+        fi
+        return 0
+    fi
+
+    # --- docker container logf <container> [options] ---
+    if [[ $group == "container" && $cmd == "logf" ]]; then
+        if [[ "$prev" == "-o" || "$prev" == "--out" ]]; then
+            mapfile -t COMPREPLY < <(compgen -f -- "$cur")
+        elif [[ "$cur" == -* ]]; then
+            local opts="-o --out --tee -f --follow -t --timestamps --tail --since --until --details -h --help"
+            mapfile -t COMPREPLY < <(compgen -W "$opts" -- "$cur")
+        else
+            # all containers, logs are available for stopped ones too
+            mapfile -t COMPREPLY < <(command docker ps -a --format '{{.Names}}' 2>/dev/null | grep "^$cur")
+        fi
+        return 0
+    fi
+
+    # --- everything else: native docker completion ---
+    __start_docker "$@"
+
+    # --- docker container ls|list: extra option -1 ---
+    if [[ "$cur" == -* ]] &&
+       [[ $group == "container" && $cmd =~ ^(ls|list)$ ]]; then
+        local extra=()
+        mapfile -t extra < <(compgen -W "-1" -- "$cur")
+        COMPREPLY+=("${extra[@]}")
+    fi
+}
+complete -o default -F __auto_complete_docker docker

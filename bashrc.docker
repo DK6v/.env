@@ -7,36 +7,73 @@
 # Docker
 # ---------------------------------------------------------------------
 
-dc() {
-    case "$1" in
-        ls|list)
-            shift
-            docker container ls --format "{{.Names}}" "$@"
+# Wrapper for docker with extra commands:
+#   docker container ns|namespace  - enter container namespace and execute command
+#   docker container logf          - save container logs to a file
+#   docker network br|bridge       - print the bridge interface name for a network
+#   docker container ls -1         - list container names only
+# Everything else is passed to the docker binary as is.
+docker() {
+    case "$1 $2" in
+        "container ls"|"container list")
+            __docker_ext_ls "$@"
             ;;
 
-        ns|namespace)
-            shift
-            __dc_namespace "$@"
-            ;;
-        
-        br|bridge)
-            shift
-            __dc_bridge "$@"
+        "container ns"|"container namespace")
+            shift 2
+            __docker_ext_namespace "$@"
             ;;
 
-        logf)
-            shift
-            __dc_logf "$@"
+        "container logf")
+            shift 2
+            __docker_ext_logf "$@"
+            ;;
+
+        "network br"|"network bridge")
+            shift 2
+            __docker_ext_bridge "$@"
+            ;;
+
+        "container --help"|"container -h"|"container ")
+            command docker "$@"
+            echo ""
+            echo "Extra commands:"
+            echo "  logf           Save container logs to a file"
+            echo "  ns, namespace  Enter container namespace and execute command"
+            echo ""
+            echo "Extra options:"
+            echo "  ls -1          List container names only (--format '{{.Names}}')"
+            ;;
+
+        "network --help"|"network -h"|"network ")
+            command docker "$@"
+            echo ""
+            echo "Extra commands:"
+            echo "  br, bridge     Print the bridge interface name for a docker network"
             ;;
 
         *)
-            docker container "$@"
+            command docker "$@"
             ;;
     esac
 }
 
-__dc_namespace() {
-    local usage="Usage: dc ns <container_name> [options] [--] <command>"
+# docker container ls with the extra option:
+#   -1  list container names only, same as --format '{{.Names}}'
+__docker_ext_ls() {
+    local args=() arg
+    for arg in "$@"; do
+        if [ "$arg" = "-1" ]; then
+            args+=(--format '{{.Names}}')
+        else
+            args+=("$arg")
+        fi
+    done
+    command docker "${args[@]}"
+}
+
+__docker_ext_namespace() {
+    local usage="Usage: docker container ns <container_name> [options] [--] <command>"
     if [ -z "$1" ]; then
         echo "$usage"
         return 1
@@ -47,10 +84,10 @@ __dc_namespace() {
         echo "Enter container namespace and execute command"
         echo ""
         echo "Examples:"
-        echo "  dc ns mycontainer ip a                    # Show network interfaces"
-        echo "  dc ns mycontainer --net --pid ps aux      # Show processes in container"
-        echo "  dc ns mycontainer -- --help               # Run --help in container"
-        echo "  dc ns mycontainer                         # Start bash in container"
+        echo "  docker container ns mycontainer ip a                    # Show network interfaces"
+        echo "  docker container ns mycontainer --net --pid ps aux      # Show processes in container"
+        echo "  docker container ns mycontainer -- --help               # Run --help in container"
+        echo "  docker container ns mycontainer                         # Start bash in container"
         echo ""
         echo "Common options:"
         echo "  --net      Enter network namespace"
@@ -87,8 +124,8 @@ __dc_namespace() {
     fi
 }
 
-__dc_bridge() {
-    local usage="Usage: dc bridge <network_name>"
+__docker_ext_bridge() {
+    local usage="Usage: docker network bridge <network_name>"
         if [ -z "$1" ]; then
             echo "$usage"
             return 1
@@ -99,9 +136,9 @@ __dc_bridge() {
             echo "Print the bridge interface name for a docker network"
             echo ""
             echo "Examples:"
-            echo "  dc br host                 # error: no bridge interface"
-            echo "  dc br bridge               # docker0 (default bridge)"
-            echo "  dc br docker_internal      # br-d331fd2b46f9"
+            echo "  docker network br host                 # error: no bridge interface"
+            echo "  docker network br bridge               # docker0 (default bridge)"
+            echo "  docker network br docker_internal      # br-d331fd2b46f9"
             return 0
         fi
         local net="$1" driver id
@@ -120,14 +157,14 @@ __dc_bridge() {
                 return 1
                 ;;
             *)
-                log-warn "dc bridge: unsupported driver '$driver' for network '$net'"
+                log-warn "docker network bridge: unsupported driver '$driver' for network '$net'"
                 return 1
                 ;;
         esac
 }
 
-__dc_logf() {
-    local usage="Usage: dc logf <container> [-o <file>] [--tee] [docker-native-options]"
+__docker_ext_logf() {
+    local usage="Usage: docker container logf <container> [-o <file>] [--tee] [docker-native-options]"
     if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
         echo "$usage"
         echo ""
@@ -149,11 +186,14 @@ __dc_logf() {
         echo "The container name must be the first argument."
         echo ""
         echo "Examples:"
-        echo "  dc logf mycontainer                       # file only     -> mycontainer_<ts>.log"
-        echo "  dc logf mycontainer --tee                 # file + stdout -> mycontainer_<ts>.log"
-        echo "  dc logf mycontainer -o /tmp/my.log        # file only     -> /tmp/my.log"
-        echo "  dc logf mycontainer --tee -f              # follow, file + stdout"
-        echo "  dc logf mycontainer -t --tail 100 --tee   # timestamps, last 100, file + stdout"
+        echo "  docker container logf mycontainer                       # file only     -> mycontainer_<ts>.log"
+        echo "  docker container logf mycontainer --tee                 # file + stdout -> mycontainer_<ts>.log"
+        echo "  docker container logf mycontainer -o /tmp/my.log        # file only     -> /tmp/my.log"
+        echo "  docker container logf mycontainer --tee -f              # follow, file + stdout"
+        echo "  docker container logf mycontainer -t --tail 100 --tee   # timestamps, last 100, file + stdout"
+        echo ""
+        echo "Container names can also be read from stdin:"
+        echo "  docker container ls -1 | docker container logf --tee"
         return 0
     fi
 
@@ -171,7 +211,7 @@ __dc_logf() {
         local c
         for c in "${names[@]}"; do
             [ -z "$c" ] && continue
-            __dc_logf "$c" "$@" </dev/null
+            __docker_ext_logf "$c" "$@" </dev/null
         done
         return 0
     fi
@@ -217,9 +257,9 @@ __dc_logf() {
         esac
     done
 
-    # default file name: <container>_<YYYY-MM-DD_HH-MM-SS>.log
+    # default file name: <container>_<YYYY-MM-DD_HHhMMmSSs>.log
     if [ -z "$out" ]; then
-        out="${container}_$(date +%Y-%m-%d_%H-%M-%S).log"
+        out="${container}_$(date +%Y-%m-%d_%Hh%Mm%Ss).log"
     fi
 
     # check container exists

@@ -7,10 +7,10 @@ This repository contains a set of configuration files for setting up a user envi
 - **`bashrc.common`** – The main `bash` configuration file, sourced from your primary `.bashrc`. Adds `bin/` to `PATH`, sets the prompt and sources the other configuration files.
 - **`bashrc.logging`** – Color scheme (`SF_*` variables), result codes and logging functions (`log-info`, `log-warn`, `log-progress-*`, ...) filtered by `LOG_LEVEL`. Also sourced by the scripts in `bin/`.
 - **`bashrc.aliases`** – Shell aliases (e.g., `ll`, `gs`, `ipt-rules`).
-- **`bashrc.docker`** – The `dc` function for Docker containers (`dc ls`, `dc ns`, `dc br`, `dc logf`, ...).
+- **`bashrc.docker`** – A `docker` wrapper with extra commands: `docker container logf` (save logs to a file), `docker container ns` (run a command in container namespaces), `docker network br` (bridge interface name), and the `-1` option for `docker container ls` (names only). Run with `--help` for details.
 - **`bashrc.certs`** – `cert-list` and `cert-info` functions for inspecting X.509 certificates.
 - **`bashrc.script`** – Helper functions such as `pwgen16`.
-- **`bashrc.complete.d/`** – Bash completions for `dc`, `cert-*` and `tmux`.
+- **`bashrc.complete.d/`** – Bash completions for `docker` (native completion plus the extra commands), `cert-*` and `tmux`.
 - **`bashrc.user.template`** – A template for personal user settings. It's recommended to copy this to `~/.env/bashrc.user` and edit it for your own needs, keeping it separate from the shared configuration.
 - **`bin/`** – Scripts: `gtls.sh` (list files by git status), `ip-to-mac`, `wnping` (`nping` wrapper), `install_docker.sh`.
 - **`.gitconfig`** – A `~/.gitconfig` template that includes `gitconfig.common`.

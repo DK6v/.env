@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - Command completions moved into `bashrc.complete.d` directory.
 - Added `tmux` command completions.
 - Release workflow checks that the tag matches `ENV_VERSION` in `version.env`.
+- `docker` wrapper function with extra commands, completed together with the native docker completion:
+  - `docker container logf` (was `dc logf`),
+  - `docker container ns|namespace` (was `dc ns`),
+  - `docker network br|bridge` (was `dc br`),
+  - `-1` option for `docker container ls` — list container names only (was `dc ls`).
 
 ### Changed
 - Split `bashrc.script` into `bashrc.script` and `bashrc.logging`.
@@ -19,11 +24,13 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `log-*-raw` functions filter by `LOG_LEVEL` the same way as other log functions.
 - The repository root is no longer added to `PATH` (only `bin/`).
 
+### Removed
+- `dc` function and its completion; use `docker container ...` instead (`dc ls` -> `docker container ls -1`).
+
 ### Fixed
 - `ip-to-mac` and `wnping` failed after function exports were removed.
 - `wnping`: arguments with spaces, `-s` without a value, unknown `log-warning` call.
 - `gtls.sh` handles file names with spaces and renamed files.
-- `dc` completion: `logf` options, `list` / `namespace` aliases.
 - `tmux` completion: global options with/without values, `display-message`, `confirm`.
 - `SF_CLEAR` is defined for the tput color scheme; ascii scheme no longer embeds prompt-only `\[ \]`.
 - Duplicate "Source file" message for `bashrc.user`.
