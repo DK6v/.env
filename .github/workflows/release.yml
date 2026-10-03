@@ -16,16 +16,27 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5 # Обновлено с v4 на v5 для поддержки Node 24
+        uses: actions/checkout@v5 # v5 for Node 24 support
         with:
           ref: ${{ inputs.tag || github.ref }}
 
       - name: Resolve tag
+        env:
+          INPUT_TAG: ${{ inputs.tag || github.ref_name }}
         run: |
           set -euo pipefail
-          tag="${{ inputs.tag || github.ref_name }}"
+          tag="${INPUT_TAG}"
           echo "TAG=${tag}" >> "$GITHUB_ENV"
           echo "Resolved tag: ${tag}"
+
+      - name: Check version
+        run: |
+          set -euo pipefail
+          source ./version.env
+          if [ "v${ENV_VERSION}" != "${TAG}" ]; then
+            echo "Tag ${TAG} does not match ENV_VERSION=${ENV_VERSION} in version.env" >&2
+            exit 1
+          fi
 
       - name: Build archive
         run: |
@@ -53,7 +64,7 @@ jobs:
           echo "Built archive: ${out} ($(du -h "${out}" | cut -f1))"
 
       - name: Upload Release Asset
-        uses: softprops/action-gh-release@v3 # Обновлено с v2 на v3 для поддержки Node 24
+        uses: softprops/action-gh-release@v3 # v3 for Node 24 support
         with:
           tag_name: ${{ env.TAG }}
           files: ${{ env.ARTIFACTS_DIR }}/${{ env.ZIP_NAME }}

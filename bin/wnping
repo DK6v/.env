@@ -10,6 +10,9 @@ source "${ENV_PATH}/bashrc.logging"
 # Apply color scheme, see ~/.env/bashrc.common for details.
 global_color_scheme;
 
+# Include result codes
+global_result_codes
+
 function main() {
 
   local DIRECT_OPTS=()
@@ -18,7 +21,7 @@ function main() {
   local MAC_ADDR=""
 
   if ! type "$nping" >/dev/null 2>&1; then
-    log-warning "Command 'nping' needs to be installed, terminating..."
+    log-warn "Command 'nping' needs to be installed, terminating..."
     exit "$ENOPKG"
   fi
 
@@ -26,7 +29,7 @@ function main() {
     local opt=$1
     case $opt in
       -s|--source)
-          if [ $# -lt 1 ]; then
+          if [ $# -lt 2 ]; then
             log-error "IP address is not specified"
             exit "$ENOARG"
           fi
@@ -51,21 +54,24 @@ function main() {
   fi
 
   # Find the source MAC address
-  MAC_ADDR=$(ip-to-mac "$IP_ADDR") 
+  if [ -n "$IP_ADDR" ]; then
+    MAC_ADDR=$(ip-to-mac "$IP_ADDR")
+  fi
 
   log-debug "Source address: IP=$IP_ADDR MAC=$MAC_ADDR"
   log-debug "Direct options: ${DIRECT_OPTS[*]}"
 
   # Prepare wrapped command
+  local cmd=(sudo nping)
   if [ -n "$IP_ADDR" ] && [ -n "$MAC_ADDR" ]; then
-    cmd="sudo nping --source-ip $IP_ADDR --source-mac $MAC_ADDR ${DIRECT_OPTS[*]}"
-  else
+    cmd+=(--source-ip "$IP_ADDR" --source-mac "$MAC_ADDR")
+  elif [ -n "$IP_ADDR" ]; then
     log-warn "The source MAC address was not found. Default values will be used instead."
-    cmd="sudo nping ${DIRECT_OPTS[*]}"
   fi
+  cmd+=("${DIRECT_OPTS[@]}")
 
-  log-info "Wrapped command: \"$cmd\""
-  exec $cmd
+  log-info "Wrapped command: \"${cmd[*]}\""
+  exec "${cmd[@]}"
 }
 
 main "$@"

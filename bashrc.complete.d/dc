@@ -4,7 +4,7 @@
 # shellcheck disable=SC2016,SC2139
 
 __auto_complete_dc() {
-    local cur words cword
+    local cur prev words cword
     _init_completion || return
 
     # If first argument is a command
@@ -28,15 +28,15 @@ __auto_complete_dc() {
         return 0
     fi
 
-    # --- ls command ---
-    if [[ ${words[1]} == "ls" ]]; then
+    # --- ls / list command ---
+    if [[ ${words[1]} == "ls" || ${words[1]} == "list" ]]; then
         local opts="-a --all --filter --format"
         mapfile -t COMPREPLY < <(compgen -W "$opts" -- "$cur")
         return 0
     fi
 
-    # --- ns command ---
-    if [[ ${words[1]} == "ns" ]]; then
+    # --- ns / namespace command ---
+    if [[ ${words[1]} == "ns" || ${words[1]} == "namespace" ]]; then
         if [[ $cword -eq 2 ]]; then
             if [[ "$cur" == "-"* ]]; then
                 # If typing just "dc ns -" suggest only --help
@@ -59,9 +59,12 @@ __auto_complete_dc() {
 
     # --- logf command ---
     if [[ ${words[1]} == "logf" ]]; then
-        if [[ "$cur" == -* ]]; then
+        if [[ "$prev" == "-o" || "$prev" == "--out" ]]; then
+            # output file
+            mapfile -t COMPREPLY < <(compgen -f -- "$cur")
+        elif [[ "$cur" == -* ]]; then
             # option
-            local opts="--out= -q --quiet -f --follow -t --timestamps --tail --since --until --details -h --help"
+            local opts="-o --out --tee -f --follow -t --timestamps --tail --since --until --details -h --help"
             mapfile -t COMPREPLY < <(compgen -W "$opts" -- "$cur")
         else
             # container

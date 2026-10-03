@@ -17,27 +17,27 @@ function global_color_scheme() {
 function global_color_scheme_ascii() {
     if [ -t 1 ] && [ -z "${NO_COLOR:-}" ]; then
         # Style
-        SF_NORM=$'\[\e[0m\]'
-        SF_BOLD=$'\[\e[1m\]'
-        SF_ITALIC=$'\[\e[3m\]'
-        SF_UNDERLINE=$'\[\e[4m\]'
+        SF_NORM=$'\e[0m'
+        SF_BOLD=$'\e[1m'
+        SF_ITALIC=$'\e[3m'
+        SF_UNDERLINE=$'\e[4m'
         # 8-bit colors (foreground)
-        SF_BLACK=$'\[\e[38;5;0m\]'
-        SF_RED=$'\[\e[38;5;1m\]'
-        SF_GREEN=$'\[\e[38;5;2m\]'
-        SF_YELLOW=$'\[\e[38;5;3m\]'
-        SF_BLUE=$'\[\e[38;5;4m\]'
-        SF_MAGENTA=$'\[\e[38;5;5m\]'
-        SF_CYAN=$'\[\e[38;5;6m\]'
-        SF_LGREY=$'\[\e[38;5;7m\]'
-        SF_DGREY=$'\[\e[38;5;8m\]'
-        SF_LRED=$'\[\e[38;5;9m\]'
-        SF_LGREEN=$'\[\e[38;5;10m\]'
-        SF_LYELLOW=$'\[\e[38;5;11m\]'
-        SF_LBLUE=$'\[\e[38;5;12m\]'
-        SF_LMAGENTA=$'\[\e[38;5;13m\]'
-        SF_LCYAN=$'\[\e[38;5;14m\]'
-        SF_WHITE=$'\[\e[38;5;15m\]'
+        SF_BLACK=$'\e[38;5;0m'
+        SF_RED=$'\e[38;5;1m'
+        SF_GREEN=$'\e[38;5;2m'
+        SF_YELLOW=$'\e[38;5;3m'
+        SF_BLUE=$'\e[38;5;4m'
+        SF_MAGENTA=$'\e[38;5;5m'
+        SF_CYAN=$'\e[38;5;6m'
+        SF_LGREY=$'\e[38;5;7m'
+        SF_DGREY=$'\e[38;5;8m'
+        SF_LRED=$'\e[38;5;9m'
+        SF_LGREEN=$'\e[38;5;10m'
+        SF_LYELLOW=$'\e[38;5;11m'
+        SF_LBLUE=$'\e[38;5;12m'
+        SF_LMAGENTA=$'\e[38;5;13m'
+        SF_LCYAN=$'\e[38;5;14m'
+        SF_WHITE=$'\e[38;5;15m'
         # commands
         SF_CLEAR=$'\e[K'
     fi
@@ -62,12 +62,14 @@ function global_color_scheme_tput() {
         SF_LGREY="$(tput setaf 7)"
         SF_DGREY="$(tput setaf 8)"
         SF_LRED="$(tput setaf 9)"
-        SF_LGREEN="$(tput setaf 10 )"
+        SF_LGREEN="$(tput setaf 10)"
         SF_LYELLOW="$(tput setaf 11)"
         SF_LBLUE="$(tput setaf 12)"
         SF_LMAGENTA="$(tput setaf 13)"
         SF_LCYAN="$(tput setaf 14)"
         SF_WHITE="$(tput setaf 15)"
+        # commands
+        SF_CLEAR="$(tput el)"
     fi
 }
 
@@ -78,7 +80,7 @@ function global_result_codes() {
     ENOERR=0    # Success
     ENOENT=2    # No entry found
     ERBUSY=16   # Device or resource busy
-    EINVAL=22   # Invlid argument
+    EINVAL=22   # Invalid argument
     # User defined
     ENOARG=128  # No arguments
     ENOPKG=129  # Required package not found
@@ -108,7 +110,7 @@ _log_enabled() {
 
 # Print a descriptive message
 # Arguments: <message>
-# Rerurn: formatted string
+# Return: formatted string to stderr
 
 function log-debug() {
     _log_enabled debug || return 0
@@ -134,7 +136,7 @@ function log-error() {
 # Arguments: <format> [args...]  — printf-style format string, then values
 # Return:    formatted string to stdout (debug/info) or stderr (warn/error)
 #            nothing if LOG_LEVEL filters the level out
-# Example:   plog-info 'container %s started' "$name"
+# Example:   log-info-fmt 'container %s started\n' "$name"
 
 function log-debug-fmt() {
     _log_enabled debug || return 0
@@ -161,31 +163,32 @@ function log-error-fmt() {
     printf -- "${SF_RED}Error${SF_NORM}: ${fmt}" "$@" >&2
 }
 
-# Print a formatted message without a level prefix, with a trailing newline
+# Print a formatted message without a level prefix, no trailing newline
 # Arguments: <format> [args...]  — printf-style format string, then values
 # Return:    formatted string to stdout (debug/info) or stderr (warn/error)
 #            nothing if LOG_LEVEL filters the level out
-# Example:   log-info-raw 'container %s started' "$name"
+# Example:   log-info-raw 'container %s started\n' "$name"
 
 function log-debug-raw() {
-    [[ "$LOG_LEVEL" =~ ^(debug)$ ]] || return 0
+    _log_enabled debug || return 0
     local fmt="$1"; shift
     printf -- "${fmt}" "$@"
 }
 
 function log-info-raw() {
-    [[ "$LOG_LEVEL" =~ ^(info|debug)$ ]] || return 0
+    _log_enabled info || return 0
     local fmt="$1"; shift
     printf -- "${fmt}" "$@"
 }
 
 function log-warn-raw() {
-    [[ "$LOG_LEVEL" =~ ^(warn.*|info|debug)$ ]] || return 0
+    _log_enabled warn || return 0
     local fmt="$1"; shift
     printf -- "${fmt}" "$@" >&2
 }
 
 function log-error-raw() {
+    _log_enabled error || return 0
     local fmt="$1"; shift
     printf -- "${fmt}" "$@" >&2
 }

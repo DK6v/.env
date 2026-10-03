@@ -2,31 +2,25 @@
 # shellcheck shell=bash
 # shellcheck source=/dev/null
 
+# --- helpers: list tmux objects ---
+__tmux_sessions() { tmux list-sessions -F '#{session_name}' 2>/dev/null; }
+__tmux_windows()  { tmux list-windows  -F '#{window_name}'  2>/dev/null; }
+__tmux_panes()    { tmux list-panes    -F '#{pane_id}'      2>/dev/null; }
+__tmux_clients()  { tmux list-clients  -F '#{client_name}'  2>/dev/null; }
+
 __auto_complete_tmux() {
     local cur prev words cword
     _init_completion || return
 
-    # --- helpers: list tmux objects ---
-    _tmux_sessions() { tmux list-sessions -F '#{session_name}' 2>/dev/null; }
-    _tmux_windows()  { tmux list-windows  -F '#{window_name}'  2>/dev/null; }
-    _tmux_panes()    { tmux list-panes    -F '#{pane_id}'      2>/dev/null; }
-    _tmux_clients()  { tmux list-clients  -F '#{client_name}'  2>/dev/null; }
-    _tmux_keys() {
-        local table="${1:-root}"
-        printf -v tablestr '%q' "$table"
-        tmux list-keys -t "$tablestr" -F '#{key}' 2>/dev/null
-        tmux list-keys -T "$tablestr" -F '#{key}' 2>/dev/null
-    }
-
     # --- no subcommand yet: global options + all commands ---
     if [[ $cword -eq 1 ]]; then
         if [[ "$cur" == -* ]]; then
-            mapfile -t COMPREPLY < <(compgen -W "-2 -8 -C -c -f -L -l -N -S -u -v -V" -- "$cur")
+            mapfile -t COMPREPLY < <(compgen -W "-2 -8 -C -c -D -f -L -l -N -S -T -u -v -V" -- "$cur")
         else
             mapfile -t COMPREPLY < <(compgen -W "\
 attach attach-session bind bind-key choose-buffer choose-client \
 choose-session choose-tree choose-window clock-mode command-prompt \
-confirm-before copy-mode detach detach-client display display-messages \
+confirm confirm-before copy-mode detach detach-client display display-message \
 display-panes find-window findw has has-session if-shell if \
 join-pane joinp kill-pane killp kill-server kill-session kill-window \
 last-window last list-buffers list-clients list-commands list-keys \
@@ -49,8 +43,8 @@ swap-window swapw switch switch-client unbind unbind-key wait wait-for" -- "$cur
     local cmd="" i
     for (( i=1; i < cword; i++ )); do
         case "${words[i]}" in
-            -2|-8|-C|-u|-v|-V) ;;
-            -c|-f|-L|-l|-N|-S) (( i++ )) ;;
+            -2|-8|-C|-D|-l|-N|-u|-v|-V) ;;
+            -c|-f|-L|-S|-T) (( i++ )) ;;
             -*) ;;
             *) cmd="${words[i]}"; break ;;
         esac
@@ -66,27 +60,27 @@ swap-window swapw switch switch-client unbind unbind-key wait wait-for" -- "$cur
         -t)
             case "$cmd" in
                 attach|attach-session|a|new-session|new|kill-session|switch|switch-client|has|has-session|rename|rename-session|list-sessions|ls|lock-session)
-                    mapfile -t COMPREPLY < <(compgen -W "$( _tmux_sessions )" -- "$cur"); return 0 ;;
+                    mapfile -t COMPREPLY < <(compgen -W "$( __tmux_sessions )" -- "$cur"); return 0 ;;
                 new-window|neww|select-window|selectw|kill-window|rename-window|move-window|movew|swap-window|swapw|rotate-window|rotatew|select-layout|selectl|next-layout|next-window|next|previous-window|prev|last-window|last|respawn-window|respawnw|resize-window|resizew)
-                    mapfile -t COMPREPLY < <(compgen -W "$( _tmux_windows )" -- "$cur"); return 0 ;;
-                split-window|splitw|select-pane|selectp|resize-pane|resizep|send-keys|send|run-shell|run|respawn-pane|respawnp|swap-pane|swapp|pipe-pane|pipep|send-prefix|display-messages|display|copy-mode|clock-mode|if-shell|if)
-                    mapfile -t COMPREPLY < <(compgen -W "$( _tmux_panes )" -- "$cur"); return 0 ;;
+                    mapfile -t COMPREPLY < <(compgen -W "$( __tmux_windows )" -- "$cur"); return 0 ;;
+                split-window|splitw|select-pane|selectp|resize-pane|resizep|send-keys|send|run-shell|run|respawn-pane|respawnp|swap-pane|swapp|pipe-pane|pipep|send-prefix|display-message|display|copy-mode|clock-mode|if-shell|if)
+                    mapfile -t COMPREPLY < <(compgen -W "$( __tmux_panes )" -- "$cur"); return 0 ;;
                 display-panes|lock-client)
-                    mapfile -t COMPREPLY < <(compgen -W "$( _tmux_clients )" -- "$cur"); return 0 ;;
+                    mapfile -t COMPREPLY < <(compgen -W "$( __tmux_clients )" -- "$cur"); return 0 ;;
             esac
             ;;
         # -s: source / target session (new-session -s is a new name)
         -s)
             case "$cmd" in
                 detach|detach-client|move-window|movew|swap-window|swapw|swap-pane|swapp|list-panes|lsp)
-                    mapfile -t COMPREPLY < <(compgen -W "$( _tmux_sessions )" -- "$cur"); return 0 ;;
+                    mapfile -t COMPREPLY < <(compgen -W "$( __tmux_sessions )" -- "$cur"); return 0 ;;
             esac
             ;;
         # -c: start directory / target client
         -c)
             case "$cmd" in
                 display-panes|switch|switch-client|display-popup)
-                    mapfile -t COMPREPLY < <(compgen -W "$( _tmux_clients )" -- "$cur"); return 0 ;;
+                    mapfile -t COMPREPLY < <(compgen -W "$( __tmux_clients )" -- "$cur"); return 0 ;;
                 *)
                     mapfile -t COMPREPLY < <(compgen -d -- "$cur"); return 0 ;;
             esac
@@ -375,7 +369,7 @@ swap-window swapw switch switch-client unbind unbind-key wait wait-for" -- "$cur
             ;;
 
         # === display / find / choose ===
-        display|display-messages)
+        display|display-message)
             if [[ "$cur" == -* ]]; then
                 mapfile -t COMPREPLY < <(compgen -W "-a -I -N -p -F -t" -- "$cur")
             fi

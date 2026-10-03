@@ -52,7 +52,7 @@ install_docker() {
 # Function to add user to docker group
 add_user_to_docker_group() {
     echo "Step 6: Adding user to docker group..."
-    sudo usermod -aG docker $USER
+    sudo usermod -aG docker "$USER"
     
     echo "Note: You need to log out and log back in for group changes to take effect."
     echo "Alternatively, you can run: newgrp docker"

@@ -1,71 +1,40 @@
-#!/bin/bash                                            
+#!/bin/bash
 
-#IFS=$(echo -en "\n")
+# List files by git status, one path per line (relative to the current directory)
+# Usage: gtls.sh [--tracked | --untracked | --staged | --unstaged]
+#   --tracked    changed tracked files (default)
+#   --untracked  untracked files
+#   --staged     files with staged changes
+#   --unstaged   files with unstaged modifications or deletions
 
-TRACKED="False"
-UNTRACKED="False"
-STAGED="False"   
-UNSTAGED="False" 
-
-if [[ $# > 1 ]]
-then           
-   echo "You can specify only one of the following options: --tracked, --untracked, --staged, --unstaged"
-   exit 1                                                                                                
+if [[ $# -gt 1 ]]; then
+    echo "You can specify only one of the following options: --tracked, --untracked, --staged, --unstaged" >&2
+    exit 1
 fi
 
-if [[ $# == 1 ]]
-then
-    case $1 in
-        --tracked)
-            TRACKED="True";
-             ;;
-        --untracked)
-            UNTRACKED="True";
-             ;;
-        --staged)
-            STAGED="True";
-             ;;
-        --unstaged)
-            UNSTAGED="True";
-             ;;
-        *)
-            echo "unrecpognized option: $1";
-            exit 1;
+mode="${1:---tracked}"
+case "$mode" in
+    --tracked|--staged|--unstaged) untracked="no" ;;
+    --untracked)                   untracked="all" ;;
+    *)
+        echo "unrecognized option: $mode" >&2
+        exit 1
         ;;
-    esac
-fi
+esac
 
-if [[ $# == 0 ]]
-then
-    TRACKED="True"
-fi
-
-if [[ $TRACKED == "True" ]]
-then
-    git status --short --untracked-files=no | awk -F " " '{print $2}'
-    exit 0
-fi
-
-if [[ $UNTRACKED == "True" ]]
-then
-    git status --short --untracked-files=all | grep ?? | sed "s:^?? ::g"
-fi
-
-if [[ $STAGED == "True" ]]
-then
-    for file in `git status --short --untracked-files=no | sed "s: :|:g"`
-    do
-        if [[ `echo ${file:0:1}` != "|" ]]
-        then
-            echo ${file:3}
-        fi
-    done
-    exit 0
-fi
-
-if [[ $UNSTAGED == "True" ]]
-then
-	 git status --short --untracked-files=no | grep -e "^.M.*" -e "^.D.*" | cut -c 4- | tr -d '"'
-fi
-
-exit 0
+# Short format: "XY <path>" or "XY <old> -> <new>" for renames/copies,
+# paths with special characters are double-quoted.
+git status --short --untracked-files="$untracked" |
+    awk -v mode="$mode" '
+        {
+            x = substr($0, 1, 1)
+            y = substr($0, 2, 1)
+            path = substr($0, 4)
+            if (path ~ / -> /) sub(/.* -> /, "", path)
+            gsub(/^"|"$/, "", path)
+        }
+        mode == "--tracked"                    { print path }
+        mode == "--untracked" && x == "?"      { print path }
+        mode == "--staged"    && x != " "      { print path }
+        mode == "--unstaged"  && y ~ /^[MD]$/  { print path }
+    '

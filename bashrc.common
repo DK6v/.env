@@ -13,11 +13,6 @@ if [ -z "$ENV_PATH" ]; then
 fi
 
 case ":$PATH:" in
-    *":${ENV_PATH}:"*) ;;
-    *) export PATH="${ENV_PATH}:$PATH" ;;
-esac
-
-case ":$PATH:" in
     *":${ENV_PATH}/bin:"*) ;;
     *) export PATH="${ENV_PATH}/bin:$PATH" ;;
 esac
@@ -32,25 +27,22 @@ source "${ENV_PATH}/bashrc.logging"
 # Common environment
 # ---------------------------------------------------------------------
 
-# --- apply color scheme ---
-global_color_scheme
+# --- prompt (color scheme is applied by bashrc.logging) ---
 PS1="\t \[${SF_BOLD}\]\[${SF_GREEN}\]\u@\h \[${SF_BLUE}\]\w \[${SF_GREEN}\]\$ \[${SF_NORM}\]"
 
 # --- source environment ---
 retval=0
-if [ "$retval" -eq 0 ]; then
-    for file in \
-        bashrc.aliases \
-        bashrc.certs \
-        bashrc.docker \
-        bashrc.script
-    do
-        source "${ENV_PATH}/$file" || {
-            retval=$?
-            break
-        }
-    done
-fi
+for file in \
+    bashrc.aliases \
+    bashrc.certs \
+    bashrc.docker \
+    bashrc.script
+do
+    source "${ENV_PATH}/$file" || {
+        retval=$?
+        break
+    }
+done
 if [ "$retval" -eq 0 ]; then
     for file in "${ENV_PATH}/bashrc.complete.d/"*; do
         source "$file" || {

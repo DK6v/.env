@@ -10,11 +10,24 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ### Added
 - `pwgen16` function — generates a cryptographically secure 16-character password.
 - Command completions moved into `bashrc.complete.d` directory.
-- Added `tmux` commmand completions.
+- Added `tmux` command completions.
+- Release workflow checks that the tag matches `ENV_VERSION` in `version.env`.
 
 ### Changed
 - Split `bashrc.script` into `bashrc.script` and `bashrc.logging`.
 - Remove function exports.
+- `log-*-raw` functions filter by `LOG_LEVEL` the same way as other log functions.
+- The repository root is no longer added to `PATH` (only `bin/`).
+
+### Fixed
+- `ip-to-mac` and `wnping` failed after function exports were removed.
+- `wnping`: arguments with spaces, `-s` without a value, unknown `log-warning` call.
+- `gtls.sh` handles file names with spaces and renamed files.
+- `dc` completion: `logf` options, `list` / `namespace` aliases.
+- `tmux` completion: global options with/without values, `display-message`, `confirm`.
+- `SF_CLEAR` is defined for the tput color scheme; ascii scheme no longer embeds prompt-only `\[ \]`.
+- Duplicate "Source file" message for `bashrc.user`.
+- Release workflow: tag input is passed via environment instead of inline interpolation.
 
 ## [0.1.0] - 2026-09-16
 
