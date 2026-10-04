@@ -52,6 +52,7 @@ if [ "$retval" -eq 0 ]; then
     done
 fi
 log-result "Source file bashrc.common" $retval
+unset file retval
 
 # ---------------------------------------------------------------------
 # User environment

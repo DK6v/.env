@@ -6,6 +6,39 @@
 # Completion for the docker wrapper (see bashrc.docker):
 # extra commands are completed here, everything else by the native docker completion.
 
+# Complete "docker <group> <command>": the native commands plus the extra ones,
+# listed with descriptions in the same format. The native (cobra) completion
+# gets "name<TAB>description" lines from "docker __complete" and formats them
+# in __docker_handle_standard_completion_case; the extra commands are added to
+# that input. Aliases (namespace, br) are not listed, like docker's own.
+# Arguments: <group>; uses cur/prev of the caller (__auto_complete_docker)
+__auto_complete_docker_commands() {
+    local tab=$'\t' completions=() extra=()
+    case "$1" in
+        container)
+            extra=("logf${tab}Save the logs of a container to a file"
+                   "ns${tab}Run a command in the namespaces of a running container")
+            ;;
+        network)
+            extra=("bridge${tab}Print the bridge interface name of a network")
+            ;;
+    esac
+
+    if ! declare -F __docker_handle_standard_completion_case >/dev/null; then
+        # unknown native completion: names only
+        __start_docker docker "$cur" "$prev"
+        mapfile -t -O "${#COMPREPLY[@]}" COMPREPLY < <(compgen -W "${extra[*]%%$tab*}" -- "$cur")
+        return 0
+    fi
+
+    # the last line of "docker __complete" output is the directive (":4")
+    mapfile -t completions < <(command docker __complete "$1" "$cur" 2>/dev/null | sed '$d')
+    completions+=("${extra[@]}")
+    COMPREPLY=()
+    compopt +o default 2>/dev/null
+    __docker_handle_standard_completion_case
+}
+
 __auto_complete_docker() {
     # Load the native completion on first use. The loader registers its own
     # "complete" for docker, so restore ours afterwards.
@@ -21,57 +54,74 @@ __auto_complete_docker() {
     local group="${words[1]}" cmd="${words[2]}"
 
     # --- docker container <cmd> / docker network <cmd>: native + extra commands ---
-    if [[ $cword -eq 2 ]]; then
-        __start_docker "$@"
-        local extra=()
-        case "$group" in
-            container) mapfile -t extra < <(compgen -W "logf ns namespace" -- "$cur") ;;
-            network)   mapfile -t extra < <(compgen -W "br bridge" -- "$cur") ;;
-        esac
-        COMPREPLY+=("${extra[@]}")
+    if [[ $cword -eq 2 && ( $group == "container" || $group == "network" ) ]]; then
+        __auto_complete_docker_commands "$group"
         return 0
     fi
 
-    # --- docker network br|bridge <network> ---
+    # Extra commands complete file names themselves where needed: disable the
+    # "-o default" fallback, otherwise an empty container list shows files
+    case "$group $cmd" in
+        "network br"|"network bridge"|"container ns"|"container namespace"|"container logf")
+            compopt +o default 2>/dev/null
+            ;;
+    esac
+
+    # --- docker network br|bridge NETWORK ---
     if [[ $group == "network" && ( $cmd == "br" || $cmd == "bridge" ) ]]; then
         if [[ $cword -eq 3 ]]; then
             if [[ "$cur" == "-"* ]]; then
                 mapfile -t COMPREPLY < <(compgen -W "--help" -- "$cur")
             else
-                mapfile -t COMPREPLY < <(command docker network ls --format '{{.Name}}' 2>/dev/null | grep "^$cur")
+                mapfile -t COMPREPLY < <(compgen -W "$(command docker network ls --format '{{.Name}}' 2>/dev/null)" -- "$cur")
             fi
         fi
         return 0
     fi
 
-    # --- docker container ns|namespace <container> [options] [--] <command> ---
+    local i has_container=0
+
+    # --- docker container ns|namespace [OPTIONS] CONTAINER [COMMAND] [ARG...] ---
     if [[ $group == "container" && ( $cmd == "ns" || $cmd == "namespace" ) ]]; then
-        if [[ $cword -eq 3 ]]; then
-            if [[ "$cur" == "-"* ]]; then
-                mapfile -t COMPREPLY < <(compgen -W "--help" -- "$cur")
-            else
-                # running containers
-                mapfile -t COMPREPLY < <(command docker ps --format '{{.Names}}' 2>/dev/null | grep "^$cur")
-            fi
-        elif [[ $cword -eq 4 ]]; then
+        for (( i = 3; i < cword; i++ )); do
+            [[ ${words[i]} == -* ]] || { has_container=1; break; }
+        done
+        if [[ "$cur" == -* ]]; then
             # nsenter options
-            mapfile -t COMPREPLY < <(compgen -W "--net --pid --mount --uts --ipc --" -- "$cur")
+            mapfile -t COMPREPLY < <(compgen -W "--net --pid --mount --uts --ipc -- --help" -- "$cur")
+        elif [[ $has_container -eq 0 ]]; then
+            # running containers
+            mapfile -t COMPREPLY < <(compgen -W "$(command docker ps --format '{{.Names}}' 2>/dev/null)" -- "$cur")
         else
             mapfile -t COMPREPLY < <(compgen -f -- "$cur")
         fi
         return 0
     fi
 
-    # --- docker container logf <container> [options] ---
+    # --- docker container logf [OPTIONS] [CONTAINER] ---
     if [[ $group == "container" && $cmd == "logf" ]]; then
-        if [[ "$prev" == "-o" || "$prev" == "--out" ]]; then
-            mapfile -t COMPREPLY < <(compgen -f -- "$cur")
-        elif [[ "$cur" == -* ]]; then
-            local opts="-o --out --tee -f --follow -t --timestamps --tail --since --until --details -h --help"
+        for (( i = 3; i < cword; i++ )); do
+            case "${words[i]}" in
+                -o|--out|-n|--tail|--since|--until) (( i++ )) ;;
+                -*) ;;
+                *) has_container=1 ;;
+            esac
+        done
+        case "$prev" in
+            -o|--out)
+                mapfile -t COMPREPLY < <(compgen -f -- "$cur")
+                return 0
+                ;;
+            -n|--tail|--since|--until)
+                return 0
+                ;;
+        esac
+        if [[ "$cur" == -* ]]; then
+            local opts="--details -f --follow -o --out --since -n --tail -t --timestamps --tee --until -h --help"
             mapfile -t COMPREPLY < <(compgen -W "$opts" -- "$cur")
-        else
+        elif [[ $has_container -eq 0 ]]; then
             # all containers, logs are available for stopped ones too
-            mapfile -t COMPREPLY < <(command docker ps -a --format '{{.Names}}' 2>/dev/null | grep "^$cur")
+            mapfile -t COMPREPLY < <(compgen -W "$(command docker ps -a --format '{{.Names}}' 2>/dev/null)" -- "$cur")
         fi
         return 0
     fi

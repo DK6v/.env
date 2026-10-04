@@ -65,9 +65,11 @@ fetch() {
 latest_tag() {
     local url="https://github.com/${REPO}/releases/latest" location
     if has curl; then
-        location=$(curl -fsSLI -o /dev/null -w '%{url_effective}' "$url")
+        location=$(curl -fsSLI -o /dev/null -w '%{url_effective}' "$url") \
+            || die "cannot reach ${url}"
     elif has wget; then
-        location=$(wget -q -S --spider "$url" 2>&1 | awk '/^ *Location:/ { l = $2 } END { print l }')
+        location=$(wget -q -S --spider "$url" 2>&1 | awk '/^ *Location:/ { l = $2 } END { print l }') \
+            || die "cannot reach ${url}"
     else
         die "curl or wget is required"
     fi
@@ -98,14 +100,14 @@ local_changes() {
         [ -n "$f" ] || continue
         known["$f"]=1
         if [ ! -f "$dir/$f" ]; then
-            echo "removed: $f"
+            echo "  removed: $f"
         elif [ "$(hash_file "$dir/$f")" != "$h" ]; then
-            echo "changed: $f"
+            echo "  changed: $f"
         fi
     done < <(sed '/^#/d' "$dir/$MANIFEST")
     while IFS= read -r f; do
         case "$f" in "$MANIFEST"|"$USER_FILE") continue ;; esac
-        [ -n "${known[$f]:-}" ] || echo "added:   $f"
+        [ -n "${known[$f]:-}" ] || echo "  added:   $f"
     done < <(list_files "$dir")
 }
 
@@ -143,8 +145,11 @@ has tar || die "tar is required"
 has sha256sum || has shasum || die "sha256sum or shasum is required"
 
 DEST="${DEST%/}"
-[ -n "$DEST" ] && [ "$DEST" != "$HOME" ] || die "invalid install directory: '${DEST}'"
-if [ -d "$DEST/.git" ]; then
+if [ -z "$DEST" ] || [ "$DEST" = "$HOME" ]; then
+    die "invalid install directory: '${DEST}'"
+fi
+# .git is a directory in a clone, a file in a worktree or submodule
+if [ -e "$DEST/.git" ]; then
     die "${DEST} is a git checkout, update it with: git -C ${DEST} pull"
 fi
 
@@ -191,15 +196,23 @@ if [ -d "$DEST" ] && [ -n "$(ls -A -- "$DEST")" ]; then
     if [ -f "$DEST/$MANIFEST" ]; then
         changes=$(local_changes "$DEST")
     else
-        changes="not installed by install.sh"
+        changes="  not installed by install.sh"
     fi
 
-    [ -f "$DEST/$USER_FILE" ] && cp -p -- "$DEST/$USER_FILE" "$STAGE/$USER_FILE"
+    if [ -f "$DEST/$USER_FILE" ]; then
+        cp -p -- "$DEST/$USER_FILE" "$STAGE/$USER_FILE"
+    fi
 
     if [ -n "$changes" ]; then
-        BACKUP="${DEST}.$(date +%Y-%m-%d_%Hh%Mm%Ss)"
+        base="${DEST}.$(date +%Y-%m-%d_%Hh%Mm%Ss)"
+        BACKUP="$base"
+        n=1
+        while [ -e "$BACKUP" ]; do
+            BACKUP="${base}.${n}"
+            n=$((n + 1))
+        done
         warn "local changes in ${DEST}:"
-        sed 's/^/  /' <<<"$changes" >&2
+        printf '%s\n' "$changes" >&2
         mv -- "$DEST" "$BACKUP"
     else
         rm -rf -- "$DEST"

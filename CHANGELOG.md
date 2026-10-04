@@ -36,6 +36,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 - `SF_CLEAR` is defined for the tput color scheme; ascii scheme no longer embeds prompt-only `\[ \]`.
 - Duplicate "Source file" message for `bashrc.user`.
 - Release workflow: tag input is passed via environment instead of inline interpolation.
+- `docker container ns` without namespace options ran the command on the host (nsenter enters no namespaces by default); it now enters all namespaces (`--all`). The default command is `/bin/sh` (images such as alpine have no bash), and `--` ends nsenter options.
+- Help and argument errors of the extra docker commands follow the docker CLI style (`Usage:  docker container logf [OPTIONS] [CONTAINER]`, `requires 1 argument`, ...); `ns` and `logf` accept options before or after the container name.
+- `docker container logf`: reports failure and returns non-zero when `docker logs` fails; `-o` accepts existing writable files such as `/dev/null` and is rejected for several containers from stdin (each would overwrite the file).
+- Completion lists the extra docker commands with descriptions, like the native ones, and no longer falls back to file names when there are no containers.
+- `docker network br`: reports a missing network as "not found".
+- `bashrc.common` no longer leaves `file` and `retval` variables in the shell.
+- Removed duplicate `cert-list` / `cert-info` from `bashrc.aliases`.
+- All shell files pass `shellcheck`.
 
 ## [0.1.0] - 2026-09-16
 

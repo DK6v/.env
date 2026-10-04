@@ -8,48 +8,44 @@
 # ---------------------------------------------------------------------
 
 # Wrapper for docker with extra commands:
-#   docker container ns|namespace  - enter container namespace and execute command
 #   docker container logf          - save container logs to a file
-#   docker network br|bridge       - print the bridge interface name for a network
+#   docker container ns|namespace  - run a command in the namespaces of a container
+#   docker network br|bridge       - print the bridge interface name of a network
 #   docker container ls -1         - list container names only
 # Everything else is passed to the docker binary as is.
 docker() {
     case "$1 $2" in
         "container ls"|"container list")
-            __docker_ext_ls "$@"
+            __docker_container_ls "$@"
             ;;
 
         "container ns"|"container namespace")
             shift 2
-            __docker_ext_namespace "$@"
+            __docker_container_namespace "$@"
             ;;
 
         "container logf")
             shift 2
-            __docker_ext_logf "$@"
+            __docker_container_logf "$@"
             ;;
 
         "network br"|"network bridge")
             shift 2
-            __docker_ext_bridge "$@"
+            __docker_network_bridge "$@"
             ;;
 
         "container --help"|"container -h"|"container ")
-            command docker "$@"
-            echo ""
-            echo "Extra commands:"
-            echo "  logf           Save container logs to a file"
-            echo "  ns, namespace  Enter container namespace and execute command"
-            echo ""
-            echo "Extra options:"
-            echo "  ls -1          List container names only (--format '{{.Names}}')"
+            __docker_help "Extra commands:
+  logf        Save the logs of a container to a file
+  ns          Run a command in the namespaces of a running container
+
+Extra options:
+  ls -1       List container names only" "$@"
             ;;
 
         "network --help"|"network -h"|"network ")
-            command docker "$@"
-            echo ""
-            echo "Extra commands:"
-            echo "  br, bridge     Print the bridge interface name for a docker network"
+            __docker_help "Extra commands:
+  bridge      Print the bridge interface name of a network" "$@"
             ;;
 
         *)
@@ -58,9 +54,29 @@ docker() {
     esac
 }
 
+# Print native docker help with <extra> inserted before the "Run '...'" footer
+# Arguments: <extra> <docker args...>
+__docker_help() {
+    local extra="$1"; shift
+    command docker "$@" | EXTRA="$extra" awk '
+        /^Run '\''docker/ && !done { print ENVIRON["EXTRA"]; print ""; done = 1 }
+        { print }
+        END { if (!done) { print ""; print ENVIRON["EXTRA"] } }
+    '
+    return "${PIPESTATUS[0]}"
+}
+
+# Print a docker-style argument error to stderr
+# Arguments: <command> <message> <usage>
+__docker_usage_error() {
+    printf "docker: '%s' %s\n\nUsage:  %s\n\nRun '%s --help' for more information\n" \
+        "$1" "$2" "$3" "$1" >&2
+    return 1
+}
+
 # docker container ls with the extra option:
 #   -1  list container names only, same as --format '{{.Names}}'
-__docker_ext_ls() {
+__docker_container_ls() {
     local args=() arg
     for arg in "$@"; do
         if [ "$arg" = "-1" ]; then
@@ -72,190 +88,229 @@ __docker_ext_ls() {
     command docker "${args[@]}"
 }
 
-__docker_ext_namespace() {
-    local usage="Usage: docker container ns <container_name> [options] [--] <command>"
-    if [ -z "$1" ]; then
-        echo "$usage"
-        return 1
-    fi
-    if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
-        echo "$usage"
-        echo ""
-        echo "Enter container namespace and execute command"
-        echo ""
-        echo "Examples:"
-        echo "  docker container ns mycontainer ip a                    # Show network interfaces"
-        echo "  docker container ns mycontainer --net --pid ps aux      # Show processes in container"
-        echo "  docker container ns mycontainer -- --help               # Run --help in container"
-        echo "  docker container ns mycontainer                         # Start bash in container"
-        echo ""
-        echo "Common options:"
-        echo "  --net      Enter network namespace"
-        echo "  --pid      Enter PID namespace"
-        echo "  --mount    Enter mount namespace"
-        echo "  --uts      Enter UTS namespace"
-        echo "  --ipc      Enter IPC namespace"
-        return 0
-    fi
-    local container="$1"
-    shift
-    local pid
-    pid=$(docker inspect -f '{{.State.Pid}}' "$container" 2>/dev/null)
-    if [ -z "$pid" ] || [ "$pid" -eq 0 ]; then
-        echo "Container '$container' is not running or doesn't exist"
-        return 1
-    fi
-    # Options starts with --
-    local ns_opts=()
-    local command=()
-    for arg in "$@"; do
-        if [[ ${#command[@]} -eq 0 ]] && [[ "$arg" == --* ]]; then
-            ns_opts+=("$arg")
-        else
-            command+=("$arg")
-        fi
-    done
-    if [[ ${#command[@]} -eq 0 ]]; then
-        # shellcheck disable=SC2068
-        sudo nsenter -t "$pid" ${ns_opts[@]} /bin/bash
-    else
-        # shellcheck disable=SC2068
-        sudo nsenter -t "$pid" ${ns_opts[@]} "${command[@]}"
-    fi
-}
+__docker_container_namespace() {
+    local cmd="docker container ns"
+    local usage="${cmd} [OPTIONS] CONTAINER [COMMAND] [ARG...]"
 
-__docker_ext_bridge() {
-    local usage="Usage: docker network bridge <network_name>"
-        if [ -z "$1" ]; then
-            echo "$usage"
-            return 1
-        fi
-        if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
-            echo "$usage"
-            echo ""
-            echo "Print the bridge interface name for a docker network"
-            echo ""
-            echo "Examples:"
-            echo "  docker network br host                 # error: no bridge interface"
-            echo "  docker network br bridge               # docker0 (default bridge)"
-            echo "  docker network br docker_internal      # br-d331fd2b46f9"
-            return 0
-        fi
-        local net="$1" driver id
-        read -r driver id < <(docker network inspect -f '{{.Driver}} {{.Id}}' "$net" 2>/dev/null) || {
-            log-error "network '$net' not found"
-            return 1
-        }        
-        case "$driver" in
-            bridge)
-                if [ "$net" = bridge ]; then echo docker0
-                else printf 'br-%.12s\n' "$id"
-                fi
+    # --options before and right after CONTAINER go to nsenter,
+    # "--" ends them, the rest is the command
+    local ns_opts=() container=""
+    while [ $# -gt 0 ]; do
+        case "$1" in
+            -h|--help)
+                cat <<EOF
+Usage:  ${usage}
+
+Run a command in the namespaces of a running container
+
+Aliases:
+  docker container ns, docker container namespace
+
+Options:
+      --ipc     Enter the IPC namespace
+      --mount   Enter the mount namespace
+      --net     Enter the network namespace
+      --pid     Enter the PID namespace
+      --uts     Enter the UTS namespace
+
+Without options all namespaces are entered (nsenter --all). Other nsenter
+long options are passed through. COMMAND defaults to /bin/sh. Requires sudo.
+
+Examples:
+  ${cmd} web                    # shell inside the container
+  ${cmd} --net web ip addr      # host tools in the container network
+  ${cmd} --net --pid web ps aux
+  ${cmd} web -- --version       # COMMAND that starts with --
+EOF
+                return 0
                 ;;
-            host|none|null)
-                log-warn "network '$net' has no bridge interface (driver=$driver)"
-                return 1
+            --)
+                shift
+                break
+                ;;
+            --*)
+                ns_opts+=("$1")
+                shift
                 ;;
             *)
-                log-warn "docker network bridge: unsupported driver '$driver' for network '$net'"
-                return 1
+                [ -n "$container" ] && break
+                container="$1"
+                shift
                 ;;
         esac
+    done
+    if [ -z "$container" ]; then
+        __docker_usage_error "$cmd" "requires at least 1 argument" "$usage"
+        return
+    fi
+
+    local pid
+    pid=$(command docker inspect -f '{{.State.Pid}}' "$container" 2>/dev/null)
+    if [ -z "$pid" ] || [ "$pid" -eq 0 ]; then
+        log-error "container '$container' is not running or doesn't exist"
+        return 1
+    fi
+
+    if [ ${#ns_opts[@]} -eq 0 ]; then
+        ns_opts=(--all)
+    fi
+    if [ $# -eq 0 ]; then
+        set -- /bin/sh
+    fi
+    sudo nsenter -t "$pid" "${ns_opts[@]}" "$@"
 }
 
-__docker_ext_logf() {
-    local usage="Usage: docker container logf <container> [-o <file>] [--tee] [docker-native-options]"
+__docker_network_bridge() {
+    local cmd="docker network bridge"
+    local usage="${cmd} NETWORK"
+
     if [[ "$1" == "-h" ]] || [[ "$1" == "--help" ]]; then
-        echo "$usage"
-        echo ""
-        echo "Save container logs to a file"
-        echo "Default file: <container>_<timestamp>.log"
-        echo ""
-        echo "Custom options:"
-        echo "  -o, --out <file>   Write logs to <file>"
-        echo "  --tee              Also print logs to stdout"
-        echo ""
-        echo "Docker native options:"
-        echo "  -f, --follow       Follow log output"
-        echo "  -t, --timestamps   Show timestamps"
-        echo "  --tail N           Only show last N lines"
-        echo "  --since TIME       Show logs since TIME"
-        echo "  --until TIME       Show logs before TIME"
-        echo "  --details          Show extra details"
-        echo ""
-        echo "The container name must be the first argument."
-        echo ""
-        echo "Examples:"
-        echo "  docker container logf mycontainer                       # file only     -> mycontainer_<ts>.log"
-        echo "  docker container logf mycontainer --tee                 # file + stdout -> mycontainer_<ts>.log"
-        echo "  docker container logf mycontainer -o /tmp/my.log        # file only     -> /tmp/my.log"
-        echo "  docker container logf mycontainer --tee -f              # follow, file + stdout"
-        echo "  docker container logf mycontainer -t --tail 100 --tee   # timestamps, last 100, file + stdout"
-        echo ""
-        echo "Container names can also be read from stdin:"
-        echo "  docker container ls -1 | docker container logf --tee"
+        cat <<EOF
+Usage:  ${usage}
+
+Print the bridge interface name of a network
+
+Aliases:
+  docker network bridge, docker network br
+
+Examples:
+  ${cmd} bridge       # docker0
+  ${cmd} my_network   # br-d331fd2b46f9
+EOF
         return 0
     fi
+    if [ $# -ne 1 ]; then
+        __docker_usage_error "$cmd" "requires 1 argument" "$usage"
+        return
+    fi
 
-    # --- stdin mode: read container names, recurse per container ---
-
-    # Enter if: stdin is not a tty AND there is no explicit container
-    # (no args, or the first arg is an option, not a container).
-    if [ ! -t 0 ] && { [ $# -eq 0 ] || [[ "$1" == -* ]]; }; then
-        local -a names=()
-        mapfile -t names
-        if [ ${#names[@]} -eq 0 ]; then
-            log-error "no container names on stdin"
+    local net="$1" driver id
+    read -r driver id < <(command docker network inspect -f '{{.Driver}} {{.Id}}' "$net" 2>/dev/null)
+    if [ -z "$driver" ]; then
+        log-error "network '$net' not found"
+        return 1
+    fi
+    case "$driver" in
+        bridge)
+            if [ "$net" = bridge ]; then
+                echo docker0
+            else
+                printf 'br-%.12s\n' "$id"
+            fi
+            ;;
+        host|none|null)
+            log-warn "network '$net' has no bridge interface (driver=$driver)"
             return 1
-        fi
-        local c
-        for c in "${names[@]}"; do
-            [ -z "$c" ] && continue
-            __docker_ext_logf "$c" "$@" </dev/null
-        done
-        return 0
-    fi
+            ;;
+        *)
+            log-warn "${cmd}: unsupported driver '$driver' for network '$net'"
+            return 1
+            ;;
+    esac
+}
 
-    # --- single-container mode ---
+__docker_container_logf() {
+    local cmd="docker container logf"
+    local usage="${cmd} [OPTIONS] [CONTAINER]"
 
-    if [ $# -eq 0 ]; then
-        echo "$usage"
-        return 1
-    fi
-
-    local container="$1"
-    if [[ "$container" == -* ]]; then
-        log-error "container name must be the first argument"
-        echo "$usage"
-        return 1
-    fi
-    shift
-
-    local out=""
-    local use_tee=0
-    local docker_opts=()
-
-    while [[ $# -gt 0 ]]; do
+    local args=("$@")
+    local container="" out="" use_tee=0 docker_opts=()
+    while [ $# -gt 0 ]; do
         case "$1" in
+            -h|--help)
+                cat <<EOF
+Usage:  ${usage}
+
+Save the logs of a container to a file
+
+Options:
+      --details        Show extra details provided to logs
+  -f, --follow         Follow log output
+  -o, --out string     Write logs to the file (default
+                       "CONTAINER_YYYY-MM-DD_HHhMMmSSs.log")
+      --since string   Show logs since timestamp (e.g. "42m")
+  -n, --tail string    Number of lines to show from the end of the logs
+  -t, --timestamps     Show timestamps
+      --tee            Also print logs to stdout
+      --until string   Show logs before timestamp (e.g. "42m")
+
+Options other than -o and --tee are passed to 'docker container logs'.
+Without CONTAINER, container names are read from stdin.
+
+Examples:
+  ${cmd} web
+  ${cmd} --tee -f web
+  ${cmd} -t -n 100 -o /tmp/web.log web
+  docker container ls -1 | ${cmd}
+EOF
+                return 0
+                ;;
             -o|--out)
-                if [ -z "$2" ]; then
-                    log-error "option -o requires a file path"
-                    return 1
+                if [ $# -lt 2 ] || [ -z "$2" ]; then
+                    __docker_usage_error "$cmd" "flag needs an argument: $1" "$usage"
+                    return
                 fi
                 out="$2"
                 shift 2
+                ;;
+            --out=*)
+                out="${1#*=}"
+                shift
                 ;;
             --tee)
                 use_tee=1
                 shift
                 ;;
-            *)
-                # everything else goes to docker logs as-is
+            -n|--tail|--since|--until)
+                if [ $# -lt 2 ]; then
+                    __docker_usage_error "$cmd" "flag needs an argument: $1" "$usage"
+                    return
+                fi
+                docker_opts+=("$1" "$2")
+                shift 2
+                ;;
+            -*)
+                # everything else goes to docker logs as is
                 docker_opts+=("$1")
+                shift
+                ;;
+            *)
+                if [ -n "$container" ]; then
+                    __docker_usage_error "$cmd" "accepts at most 1 argument" "$usage"
+                    return
+                fi
+                container="$1"
                 shift
                 ;;
         esac
     done
+
+    # --- stdin mode: read container names, run per container ---
+
+    if [ -z "$container" ]; then
+        if [ -t 0 ]; then
+            __docker_usage_error "$cmd" "requires 1 argument or container names on stdin" "$usage"
+            return
+        fi
+        local -a names=()
+        local c rc=0
+        mapfile -t names
+        if [ ${#names[@]} -eq 0 ]; then
+            log-error "no container names on stdin"
+            return 1
+        fi
+        if [ -n "$out" ] && [ ${#names[@]} -gt 1 ]; then
+            log-error "-o cannot be used with several containers, each would overwrite '$out'"
+            return 1
+        fi
+        for c in "${names[@]}"; do
+            [ -n "$c" ] || continue
+            __docker_container_logf "${args[@]}" "$c" </dev/null || rc=1
+        done
+        return "$rc"
+    fi
+
+    # --- single container ---
 
     # default file name: <container>_<YYYY-MM-DD_HHhMMmSSs>.log
     if [ -z "$out" ]; then
@@ -263,24 +318,35 @@ __docker_ext_logf() {
     fi
 
     # check container exists
-    if ! docker inspect "$container" >/dev/null 2>&1; then
+    if ! command docker inspect "$container" >/dev/null 2>&1; then
         log-error "container '$container' not found"
         return 1
     fi
 
-    # make sure the target directory is writable
+    # make sure the target file (or its directory, for a new file) is writable
     local out_dir
     out_dir=$(dirname -- "$out")
-    if [ ! -w "$out_dir" ]; then
+    if [ -e "$out" ] && [ ! -w "$out" ]; then
+        log-error "cannot write to '$out'"
+        return 1
+    elif [ ! -e "$out" ] && [ ! -w "$out_dir" ]; then
         log-error "cannot write to '$out_dir'"
         return 1
     fi
 
+    local rc
     if [ "$use_tee" -eq 1 ]; then
-        docker logs "${docker_opts[@]}" "$container" 2>&1 | nocolor | tee -- "$out"
+        command docker logs "${docker_opts[@]}" "$container" 2>&1 | nocolor | tee -- "$out"
+        rc=${PIPESTATUS[0]}
     else
         log-progress-start "Writing to $out"
-        docker logs "${docker_opts[@]}" "$container" 2>&1 | nocolor >"$out"
-        log-progress-done
+        command docker logs "${docker_opts[@]}" "$container" 2>&1 | nocolor >"$out"
+        rc=${PIPESTATUS[0]}
+        if [ "$rc" -eq 0 ]; then
+            log-progress-done
+        else
+            log-progress-fail
+        fi
     fi
+    return "$rc"
 }

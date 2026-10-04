@@ -1,5 +1,8 @@
 #!/usr/bin/env bash
 
+# The *-fmt, *-raw and progress functions take a printf format from the caller.
+# shellcheck disable=SC2059
+
 # REF: Utility Argument Syntax
 # https://pubs.opengroup.org/onlinepubs/9699919799/basedefs/V1_chap12.html
 
