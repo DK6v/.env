@@ -21,10 +21,28 @@ This repository contains a set of configuration files for setting up a user envi
 
 ## Installation
 
+### From a release (no git or GitHub account needed)
+
+```bash
+curl -fsSL https://raw.githubusercontent.com/DK6v/.env/main/install.sh | bash
+```
+
+This downloads the latest release archive into `~/.env`, adds it to `~/.bashrc` and creates `bashrc.user` from the template. Run the same command again to update. Options (pass them after `bash -s --`):
+
+- `--version v0.1.0` – install a specific release;
+- `--dir DIR` – install somewhere other than `~/.env`;
+- `--archive FILE` – install from a downloaded archive (offline);
+- `--no-bashrc` – do not touch `~/.bashrc`.
+
+Local changes are safe on update. `install.sh` records the checksum of every installed file in `~/.env/.install-manifest`. If any file in `~/.env` was changed, removed or added, the whole directory is moved to `~/.env.<timestamp>` before the new release is installed. Otherwise it is simply replaced. Put personal settings in `bashrc.user`: it is carried over to the new installation.
+
+### From git
+
 1.  Clone the repository into your home directory:
     ```bash
     git clone https://github.com/DK6v/.env ~/.env
     ```
+    Update with `git -C ~/.env pull`. `install.sh` does not update a git checkout.
 
 2.  Add the following lines to the end of your `~/.bashrc` file to source the main configuration:
     ```bash
@@ -38,6 +56,8 @@ This repository contains a set of configuration files for setting up a user envi
     ```bash
     cp ~/.env/bashrc.user.template ~/.env/bashrc.user
     ```
+
+### Optional
 
 4.  (Optional) Use the `git` and `tmux` configuration:
     ```bash

@@ -8,6 +8,7 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 ## [Unreleased]
 
 ### Added
+- `install.sh` — installs or updates the environment from a GitHub release archive (no git or GitHub account needed); if files were changed locally, the previous installation is moved to `~/.env.<timestamp>`.
 - `pwgen16` function — generates a cryptographically secure 16-character password.
 - Command completions moved into `bashrc.complete.d` directory.
 - Added `tmux` command completions.
